@@ -5,10 +5,10 @@ export interface Task {
   id: string;
   zone: string;
   label: string;
-  duration: number;
+  duration: number; // in minutes
   priority: Priority;
   status: Status;
   dependency: string | null;
-  recurrence: number;
-  lastCompleted: number | null;
+  recurrence: number; // days
+  lastCompleted: number | null; // timestamp
 }

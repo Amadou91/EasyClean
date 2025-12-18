@@ -3,7 +3,9 @@ import { useInventory } from './hooks/useInventory';
 import { DashboardView } from './components/DashboardView';
 import { ExecutionView } from './components/ExecutionView';
 import { InventoryView } from './components/InventoryView';
-import { Download, Upload, Home } from 'lucide-react';
+import { LoginView } from './components/LoginView';
+import { Home, LogOut } from 'lucide-react';
+import { supabase } from './lib/supabase';
 
 export default function App() {
   const [view, setView] = useState<'dashboard' | 'execute' | 'inventory'>('dashboard');
@@ -18,14 +20,27 @@ export default function App() {
     addTask, 
     deleteTask, 
     addZone, 
-    exportData, 
-    importData 
+    user,
+    loading
   } = useInventory();
 
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const handleImportClick = () => fileInputRef.current?.click();
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files?.[0]) importData(e.target.files[0]);
+  // 1. Loading State
+  if (loading) {
+      return (
+          <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+              <div className="animate-pulse text-teal-600 font-serif text-xl">Loading EasyClean...</div>
+          </div>
+      );
+  }
+
+  // 2. Auth State - Show Login if no user
+  if (!user) {
+      return <LoginView />;
+  }
+
+  // 3. Main App (Authenticated)
+  const handleLogout = async () => {
+      await supabase.auth.signOut();
   };
 
   return (
@@ -42,13 +57,12 @@ export default function App() {
                 </h1>
             </div>
             <div className="flex items-center gap-3">
-                <button onClick={exportData} className="text-stone-400 hover:text-emerald-500 transition-colors p-2 hover:bg-white rounded-xl hover:shadow-sm" title="Export JSON">
-                    <Download className="w-5 h-5" />
+                <div className="text-xs text-stone-400 font-medium hidden sm:block">
+                    {user.email}
+                </div>
+                <button onClick={handleLogout} className="text-stone-400 hover:text-red-500 transition-colors p-2 hover:bg-white rounded-xl hover:shadow-sm" title="Sign Out">
+                    <LogOut className="w-5 h-5" />
                 </button>
-                <button onClick={handleImportClick} className="text-stone-400 hover:text-emerald-500 transition-colors p-2 hover:bg-white rounded-xl hover:shadow-sm" title="Import JSON">
-                    <Upload className="w-5 h-5" />
-                </button>
-                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
             </div>
         </div>
 

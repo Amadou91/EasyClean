@@ -10,6 +10,7 @@
         "lint": "eslint . --ext ts,tsx --max-warnings=0"
     },
     "dependencies": {
+        "@supabase/supabase-js": "^2.89.0",
         "clsx": "^2.0.0",
         "lucide-react": "^0.294.0",
         "react": "^18.2.0",
