@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useInventory } from './hooks/useInventory';
 import { DashboardView } from './components/DashboardView';
 import { ExecutionView } from './components/ExecutionView';
@@ -18,6 +18,7 @@ export default function App() {
     setInventory,
     zones, 
     addTask, 
+    updateTask, 
     deleteTask, 
     addZone, 
     user,
