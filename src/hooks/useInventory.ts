@@ -119,6 +119,8 @@ export function useInventory() {
     };
 
     const updateTask = async (id: string, updates: Partial<Task>) => {
+        if (!user) return; // Guard clause added here
+        
         setInventory(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
         
         // If marking complete, add timestamp and user
@@ -137,6 +139,8 @@ export function useInventory() {
     };
 
     const addZone = async (name: string) => {
+        if (!user) return; // Guard clause added here
+        
         setZones(prev => [...prev, name]);
         await supabase.from('zones').insert([{ name }]);
     };
