@@ -4,6 +4,17 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
+
+# --- NEW: Capture Build Args ---
+# These arguments are passed from the GitHub Actions workflow
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+
+# Set them as Environment Variables so Vite can bake them into the JS
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
+# -------------------------------
+
 RUN npm run build
 
 # Stage 2: Serve with Nginx
