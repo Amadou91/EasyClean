@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    background: linear-gradient(to bottom right, #f0fdf4, #fafaf9);
+    color: #1c1917;
+    min-height: 100vh;
+}
+
+@layer components {
+    .card-panel {
+        @apply bg-white/90 border border-stone-200 shadow-[0_4px_6px_-1px_rgba(16,185,129,0.05)] backdrop-blur-sm transition-all duration-300;
+    }
+    .card-hover:hover {
+        @apply -translate-y-1 shadow-[0_10px_15px_-3px_rgba(16,185,129,0.1)] border-emerald-300 bg-white;
+    }
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #a7f3d0; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #34d399; }
