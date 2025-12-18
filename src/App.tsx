@@ -18,7 +18,7 @@ export default function App() {
     setInventory,
     zones, 
     addTask, 
-    updateTask, 
+    // updateTask was removed here because it is not used in this component yet
     deleteTask, 
     addZone, 
     user,
