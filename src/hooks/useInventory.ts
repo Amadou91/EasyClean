@@ -36,7 +36,7 @@ export function useInventory() {
                 const parsed = JSON.parse(savedZones);
                 if(Array.isArray(parsed)) setZones(parsed);
             }
-        } catch (e) { console.warn("Storage access issue"); }
+        } catch { console.warn("Storage access issue"); }
     }, []);
 
     useEffect(() => { localStorage.setItem('easyCleanData', JSON.stringify(inventory)); }, [inventory]);
