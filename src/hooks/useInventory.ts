@@ -118,6 +118,8 @@ export function useInventory() {
     };
 
     const updateTask = async (id: string, updates: Partial<Task>) => {
+        if (!user) return; // FIX: Ensure user exists before accessing user.id
+
         setInventory(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
         
         // If marking complete, add timestamp and user
@@ -140,7 +142,6 @@ export function useInventory() {
         await supabase.from('zones').insert([{ name }]);
     };
 
-    // New: Delete Zone
     const deleteZone = async (name: string) => {
         if (window.confirm(`Delete "${name}" zone? Tasks will remain but the filter will be removed.`)) {
             setZones(prev => prev.filter(z => z !== name));
@@ -148,5 +149,29 @@ export function useInventory() {
         }
     };
 
-    return { inventory, setInventory, zones, user, loading, addTask, updateTask, deleteTask, addZone, deleteZone };
+    const exportData = () => {
+        const data = { inventory, zones, version: "3.2" };
+        const jsonString = `data:text/json;chatset=utf-8,${encodeURIComponent(JSON.stringify(data))}`;
+        const link = document.createElement("a");
+        link.href = jsonString;
+        link.download = "easy-clean-backup.json";
+        link.click();
+    };
+
+    const importData = (file: File) => {
+        const reader = new FileReader();
+        reader.onload = e => {
+            try {
+                const parsed = JSON.parse(e.target?.result as string);
+                if(parsed.inventory) setInventory(parsed.inventory);
+                if(parsed.zones) setZones(parsed.zones);
+                alert("Restored successfully!");
+            } catch {
+                alert("Invalid file.");
+            }
+        };
+        reader.readAsText(file);
+    };
+
+    return { inventory, setInventory, zones, user, loading, addTask, updateTask, deleteTask, addZone, deleteZone, exportData, importData };
 }
