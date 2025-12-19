@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Task } from '../types';
 import { Clock, Check, Play, Edit, Zap } from 'lucide-react';
 
@@ -17,7 +17,7 @@ const Countdown = () => {
         try {
             const saved = localStorage.getItem('easyCleanTargetDate');
             if (saved) return new Date(saved);
-        } catch (e) {
+        } catch {
             // Ignore storage errors
         }
         
