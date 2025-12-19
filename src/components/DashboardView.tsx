@@ -113,14 +113,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <label className="text-xs text-stone-600 uppercase font-bold mb-4 flex items-center gap-2 tracking-widest">
                         <Clock className="w-4 h-4 text-teal-600" /> How much time do you have?
                     </label>
-                    <div className="flex gap-3 overflow-x-auto pb-2">
+                    {/* Added py-2 and px-1 to allow room for the scale-105 effect to avoid clipping */}
+                    <div className="flex gap-3 overflow-x-auto py-2 px-1 -mx-1 no-scrollbar">
                         {[15, 30, 45, 60, 9999].map((val) => (
                             <button
                                 key={val}
                                 onClick={() => setSelectedTime(val)}
                                 className={`py-2 px-6 rounded-full text-sm font-bold transition-all whitespace-nowrap transform duration-200 shadow-sm ${
                                     getTimeColor(val, selectedTime === val)
-                                } ${selectedTime === val ? 'scale-105' : ''}`}
+                                } ${selectedTime === val ? 'scale-105' : 'hover:scale-105'}`}
                             >
                                 {val === 9999 ? 'All' : `${val}m`}
                             </button>
