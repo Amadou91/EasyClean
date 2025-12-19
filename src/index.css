@@ -6,7 +6,24 @@ body {
     background: linear-gradient(to bottom right, #f0fdf4, #fafaf9);
     color: #1c1917;
     min-height: 100vh;
+    
+    /* PREVENTS ZOOMING BEHAVIOR */
+    touch-action: manipulation; /* Disables double-tap to zoom */
+    -webkit-text-size-adjust: 100%; /* Prevents font scaling in landscape */
+    overscroll-behavior-y: none; /* Prevents "rubber banding" bounce effect */
 }
+
+/* Optional: Makes it feel more like an app by disabling text selection (except in inputs) */
+/*
+body {
+    -webkit-user-select: none;
+    user-select: none;
+}
+input, textarea {
+    -webkit-user-select: text;
+    user-select: text;
+}
+*/
 
 @layer components {
     .card-panel {
