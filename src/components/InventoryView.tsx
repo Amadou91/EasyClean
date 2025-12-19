@@ -206,9 +206,16 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                   <span className="text-stone-500 bg-stone-100 px-2 py-0.5 rounded">{task.zone}</span>
                                   <PriorityBadge priority={task.priority || 2} />
                                   {task.recurrence > 0 && (
-                                      <div className="group/recurrence relative text-teal-600 flex items-center gap-0.5 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 hover:bg-teal-100 transition-colors" title={`Repeats every ${task.recurrence} days`}>
+                                      <div 
+                                        className="group/recurrence relative text-teal-600 flex items-center gap-1 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 hover:bg-teal-100 transition-colors cursor-pointer" 
+                                        title={`Repeats every ${task.recurrence} days`}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            startEditingRecurrence(task);
+                                        }}
+                                      >
                                           {editingRecurrenceId === task.id ? (
-                                              <div className="flex items-center gap-1">
+                                              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                                                   <input 
                                                       type="number" 
                                                       className="w-8 text-center bg-white border border-teal-300 rounded text-xs p-0 h-4"
@@ -217,19 +224,15 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                                       onBlur={() => saveRecurrence(task.id)}
                                                       onKeyDown={(e) => e.key === 'Enter' && saveRecurrence(task.id)}
                                                       autoFocus
+                                                      onClick={(e) => e.stopPropagation()}
                                                   />
                                                   <span className="text-[9px]">d</span>
                                               </div>
                                           ) : (
                                               <>
                                                   <Repeat className="w-3 h-3" />
-                                                  <span onClick={() => startEditingRecurrence(task)} className="cursor-pointer border-b border-dashed border-teal-400/50 hover:border-teal-600">{task.recurrence}d</span>
-                                                  <span 
-                                                      onClick={() => startEditingRecurrence(task)}
-                                                      className="ml-1 opacity-0 group-hover/recurrence:opacity-100 cursor-pointer text-teal-500 hover:text-teal-700 transition-opacity"
-                                                  >
-                                                      <Edit className="w-3 h-3" />
-                                                  </span>
+                                                  <span className="border-b border-dashed border-teal-400/50">{task.recurrence}d</span>
+                                                  <Edit className="w-3 h-3 opacity-50 group-hover/recurrence:opacity-100 transition-opacity text-teal-600" />
                                               </>
                                           )}
                                       </div>
