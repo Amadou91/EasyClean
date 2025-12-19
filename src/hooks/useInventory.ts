@@ -104,6 +104,7 @@ export function useInventory() {
             priority: task.priority,
             recurrence: task.recurrence,
             status: 'pending',
+            dependency: task.dependency, // Added dependency support
             user_id: user.id // Track who created it
         }]).select().single();
 
@@ -118,7 +119,7 @@ export function useInventory() {
     };
 
     const updateTask = async (id: string, updates: Partial<Task>) => {
-        if (!user) return; // FIX: Ensure user exists before accessing user.id
+        if (!user) return;
 
         setInventory(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
         
@@ -138,6 +139,7 @@ export function useInventory() {
     };
 
     const addZone = async (name: string) => {
+        if (!user) return;
         setZones(prev => [...prev, name]);
         await supabase.from('zones').insert([{ name }]);
     };
@@ -160,14 +162,72 @@ export function useInventory() {
 
     const importData = (file: File) => {
         const reader = new FileReader();
-        reader.onload = e => {
+        reader.onload = async e => {
             try {
+                if (!user) {
+                    alert("Please log in to import data.");
+                    return;
+                }
+
                 const parsed = JSON.parse(e.target?.result as string);
-                if(parsed.inventory) setInventory(parsed.inventory);
-                if(parsed.zones) setZones(parsed.zones);
-                alert("Restored successfully!");
-            } catch {
-                alert("Invalid file.");
+                
+                // 1. Sync Zones
+                if (parsed.zones && Array.isArray(parsed.zones)) {
+                    const newZones = parsed.zones.filter((z: string) => !zones.includes(z));
+                    setZones(prev => [...prev, ...newZones]);
+                    
+                    if (newZones.length > 0) {
+                        const zoneInserts = newZones.map((name: string) => ({ name }));
+                        await supabase.from('zones').insert(zoneInserts);
+                    }
+                }
+
+                // 2. Sync Inventory (with UUID Conversion & Dependency Remapping)
+                if (parsed.inventory && Array.isArray(parsed.inventory)) {
+                    const idMap = new Map<string, string>(); // Old ID -> New UUID
+                    
+                    // First pass: Generate new UUIDs for all tasks
+                    const tasksWithNewIds = parsed.inventory.map((t: Task) => {
+                        const newId = crypto.randomUUID();
+                        idMap.set(t.id, newId);
+                        return { ...t, oldId: t.id, id: newId };
+                    });
+
+                    // Second pass: Remap dependencies and Sanitize fields
+                    const normalizedTasks = tasksWithNewIds.map((t: Task) => ({
+                        id: t.id,
+                        user_id: user.id,
+                        zone: t.zone,
+                        label: t.label,
+                        duration: t.duration || 10,
+                        priority: t.priority || 2,
+                        status: 'pending', // Reset status on import? Usually safer. Or keep t.status if desired.
+                        recurrence: t.recurrence || 0,
+                        // Remap dependency if it exists in our map
+                        dependency: t.dependency && idMap.has(t.dependency) ? idMap.get(t.dependency) : null,
+                        completed_at: null, // Reset completion history on import
+                        created_at: new Date().toISOString()
+                    }));
+
+                    // Update local state immediately
+                    setInventory(prev => [...prev, ...normalizedTasks]);
+                    
+                    // Batch insert into Supabase
+                    const { error } = await supabase.from('tasks').insert(normalizedTasks);
+                    
+                    if (error) {
+                        console.error("Import sync error:", error);
+                        alert("Import failed during database sync. Check console.");
+                    } else {
+                        alert("Data imported and synced successfully!");
+                        // Refresh to get server timestamps/canonical state
+                        fetchData();
+                    }
+                }
+
+            } catch (err) {
+                console.error(err);
+                alert("Invalid file or import failed.");
             }
         };
         reader.readAsText(file);
