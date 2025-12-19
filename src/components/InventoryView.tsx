@@ -67,13 +67,14 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           setEditingId(null);
       } else {
           const id = Math.random().toString(36).substr(2, 9);
-          setInventory(prev => [...prev, {
+          // Use onAddTask prop instead of local state setter to fix unused var error
+          onAddTask({
               ...newItem,
               id,
               status: 'pending',
               dependency: null,
               lastCompleted: null
-          }]);
+          });
       }
       
       setIsAdding(false);
@@ -110,9 +111,10 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       });
   };
 
+  // Fix: Use onDeleteTask prop inside the handler, and use this handler in JSX
   const handleDelete = (id: string) => {
       if (window.confirm("Are you sure you want to delete this task?")) {
-          setInventory(prev => prev.filter(t => t.id !== id));
+          onDeleteTask(id);
       }
   };
 
@@ -193,7 +195,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                           <button onClick={() => handleEdit(task)} className="text-stone-500 hover:text-teal-600 transition-colors p-2 hover:bg-teal-50 rounded-full">
                               <Edit className="w-4 h-4" />
                           </button>
-                          <button onClick={() => onDeleteTask(task.id)} className="text-stone-500 hover:text-red-600 transition-colors p-2 hover:bg-red-50 rounded-full">
+                          <button onClick={() => handleDelete(task.id)} className="text-stone-500 hover:text-red-600 transition-colors p-2 hover:bg-red-50 rounded-full">
                               <Trash className="w-4 h-4" />
                           </button>
                       </div>
