@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Task } from '../types';
-import { Clock, Check, Play, Edit, Zap, Repeat } from 'lucide-react';
+import { Clock, Check, Play, Edit, Zap } from 'lucide-react';
 
 interface DashboardViewProps {
   inventory: Task[];
@@ -12,20 +12,60 @@ interface DashboardViewProps {
 }
 
 const Countdown = () => {
+    // State for target date, defaulting to NYE logic if nothing saved
+    const [targetDate, setTargetDate] = useState<Date>(() => {
+        try {
+            const saved = localStorage.getItem('easyCleanTargetDate');
+            if (saved) return new Date(saved);
+        } catch (e) {
+            // Ignore storage errors
+        }
+        
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        let nye = new Date(currentYear, 11, 31);
+        if (today.getMonth() === 11 && today.getDate() > 31) {
+            nye = new Date(currentYear + 1, 11, 31);
+        }
+        return nye;
+    });
+
+    const [isHovering, setIsHovering] = useState(false);
+
     const today = new Date();
-    const currentYear = today.getFullYear();
-    let nye = new Date(currentYear, 11, 31);
-    if (today.getMonth() === 11 && today.getDate() > 31) {
-        nye = new Date(currentYear + 1, 11, 31);
-    }
-    const diffTime = Math.abs(nye.getTime() - today.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+    const diffTime = Math.ceil((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const daysLeft = Math.max(0, diffTime);
+
+    const handleEditDate = () => {
+        const currentStr = targetDate.toISOString().split('T')[0];
+        const newDateStr = prompt("Set target date (YYYY-MM-DD):", currentStr);
+        if (newDateStr) {
+            const newDate = new Date(newDateStr);
+            if (!isNaN(newDate.getTime())) {
+                setTargetDate(newDate);
+                localStorage.setItem('easyCleanTargetDate', newDate.toISOString());
+            } else {
+                alert("Invalid date format.");
+            }
+        }
+    };
 
     return (
-        <div className="flex flex-col items-end">
-            <span className="text-4xl font-serif text-teal-900">{diffDays}</span>
-            <span className="text-[10px] uppercase tracking-widest text-stone-500 font-bold flex items-center gap-1">
-                <Repeat className="w-3 h-3 text-teal-600" /> Days Left
+        <div 
+            className="flex flex-col items-end cursor-pointer group relative select-none"
+            onMouseEnter={() => setIsHovering(true)}
+            onMouseLeave={() => setIsHovering(false)}
+            onClick={handleEditDate}
+            title="Click to change target date"
+        >
+            <div className="flex items-center gap-2">
+                <div className={`transition-opacity duration-200 ${isHovering ? 'opacity-100' : 'opacity-0'}`}>
+                     <Edit className="w-4 h-4 text-stone-400" />
+                </div>
+                <span className="text-4xl font-serif text-teal-900">{daysLeft}</span>
+            </div>
+            <span className="text-[10px] uppercase tracking-widest text-stone-500 font-bold">
+                Days Left
             </span>
         </div>
     );

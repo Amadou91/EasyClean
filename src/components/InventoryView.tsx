@@ -39,8 +39,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const [filterZone, setFilterZone] = useState(initialFilter || 'All');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [editingRecurrenceId, setEditingRecurrenceId] = useState<string | null>(null);
-  const [tempRecurrence, setTempRecurrence] = useState<number>(0);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -138,17 +136,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           setIsAddingZone(false);
           setNewZoneName("");
       }
-  };
-
-  const startEditingRecurrence = (task: Task) => {
-      setEditingRecurrenceId(task.id);
-      setTempRecurrence(task.recurrence);
-  };
-
-  const saveRecurrence = (id: string) => {
-      // Use onUpdateTask for persistence
-      onUpdateTask(id, { recurrence: tempRecurrence });
-      setEditingRecurrenceId(null);
   };
 
   const handleImportClick = () => {
@@ -252,34 +239,11 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                     <PriorityBadge priority={task.priority || 2} />
                                     {task.recurrence > 0 && (
                                         <div 
-                                            className="group/recurrence relative text-teal-600 flex items-center gap-1 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 hover:bg-teal-100 transition-colors cursor-pointer" 
+                                            className="text-teal-600 flex items-center gap-1 bg-teal-50 px-2 py-0.5 rounded border border-teal-100" 
                                             title={`Repeats every ${task.recurrence} days`}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                startEditingRecurrence(task);
-                                            }}
                                         >
-                                            {editingRecurrenceId === task.id ? (
-                                                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                                                    <input 
-                                                        type="number" 
-                                                        className="w-8 text-center bg-white border border-teal-300 rounded text-xs p-0 h-4"
-                                                        value={tempRecurrence}
-                                                        onChange={(e) => setTempRecurrence(parseInt(e.target.value) || 0)}
-                                                        onBlur={() => saveRecurrence(task.id)}
-                                                        onKeyDown={(e) => e.key === 'Enter' && saveRecurrence(task.id)}
-                                                        autoFocus
-                                                        onClick={(e) => e.stopPropagation()}
-                                                    />
-                                                    <span className="text-[9px]">d</span>
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <Repeat className="w-3 h-3" />
-                                                    <span className="border-b border-dashed border-teal-400/50">{task.recurrence}d</span>
-                                                    <Edit className="w-3 h-3 opacity-50 group-hover/recurrence:opacity-100 transition-opacity text-teal-600" />
-                                                </>
-                                            )}
+                                            <Repeat className="w-3 h-3" />
+                                            <span>{task.recurrence}d</span>
                                         </div>
                                     )}
                                     {dependencyTask && (
