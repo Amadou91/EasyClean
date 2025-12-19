@@ -107,12 +107,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Execution Panel */}
-        <div className="card-panel p-8 rounded-3xl bg-white/90 border-teal-100 space-y-6">
-            <div>
-                <label className="text-xs text-stone-600 uppercase font-bold mb-4 flex items-center gap-2 tracking-widest">
+        <div className="card-panel p-8 rounded-3xl bg-white/90 border-teal-100 space-y-5">
+            <div className="space-y-3">
+                <label className="text-xs text-stone-600 uppercase font-bold flex items-center gap-2 tracking-widest">
                     <Clock className="w-4 h-4 text-teal-600" /> How much time do you have?
                 </label>
-                <div className="flex flex-wrap gap-3 py-2">
+                <div className="flex flex-wrap gap-3">
                     {[15, 30, 45, 60, 9999].map((val) => (
                         <button
                             key={val}
@@ -125,11 +125,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         </button>
                     ))}
                 </div>
+                <p className="text-sm text-stone-600 leading-relaxed">
+                    Pick a timer that matches your energy, then start a focused cleaning burst.
+                </p>
             </div>
-            <div className="pt-2 border-t border-emerald-50 flex justify-end">
+            <div className="pt-1">
                 <button
                     onClick={() => onSwitchView('execute')}
-                    className="w-full sm:w-auto px-10 py-4 text-base rounded-full font-bold flex items-center gap-2 justify-center transition-all active:scale-95 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white shadow-lg shadow-emerald-100 hover:shadow-emerald-200"
+                    className="w-full md:w-auto px-10 py-4 text-base rounded-full font-bold flex items-center gap-2 justify-center transition-all active:scale-95 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white shadow-lg shadow-emerald-100 hover:shadow-emerald-200"
                 >
                     <Zap className="w-5 h-5 fill-current" /> Start Cleaning!
                 </button>
