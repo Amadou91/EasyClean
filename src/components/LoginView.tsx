@@ -15,25 +15,29 @@ export const LoginView = () => {
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
+        setSuccessMsg(null);
 
         try {
             let loginEmail = identifier.trim();
 
             // 1. If identifier is NOT an email, look up the email via username
             if (!loginEmail.includes('@')) {
+                // Determine if it's a username lookup
                 const { data, error: profileError } = await supabase
                     .from('profiles')
                     .select('email')
-                    .eq('username', loginEmail)
+                    .ilike('username', loginEmail) // Case-insensitive lookup
                     .single();
 
                 if (profileError || !data) {
-                    throw new Error("Username not found.");
+                    // Start generic error to avoid enumeration, or specific if debugging
+                    throw new Error("Username not found. Please try your email address.");
                 }
                 loginEmail = data.email;
             }
@@ -48,7 +52,12 @@ export const LoginView = () => {
 
         } catch (err: unknown) {
             if (err instanceof Error) {
-                setError(err.message || "Failed to sign in");
+                // Handle "Email not confirmed" specifically if possible, though Supabase returns generic "Invalid login credentials" often for safety
+                if (err.message.includes("Email not confirmed")) {
+                     setError("Please confirm your email address before logging in.");
+                } else {
+                     setError(err.message || "Failed to sign in");
+                }
             } else {
                 setError("Failed to sign in");
             }
@@ -61,26 +70,26 @@ export const LoginView = () => {
         e.preventDefault();
         setLoading(true);
         setError(null);
+        setSuccessMsg(null);
 
-        // 1. Check if username exists (Optional but good UX)
-        // (The database constraint will also catch this, but this is friendlier)
-        
-        // 2. Create User
+        // Create User
         // We pass the username in "options.data" so the Postgres Trigger can save it to the profile
+        // We also explicitly set the Redirect URL to your production domain
         const { error } = await supabase.auth.signUp({
             email: newEmail,
             password,
             options: {
                 data: {
                     username: newUsername
-                }
+                },
+                emailRedirectTo: 'https://cleaning.johnnyautomates.com' 
             }
         });
 
         if (error) {
             setError(error.message);
         } else {
-            alert("Account created! You can now log in.");
+            setSuccessMsg("Account created! Please check your email to confirm your account before logging in.");
             setIsSignUp(false);
             setIdentifier(newUsername); // Pre-fill login
         }
@@ -102,6 +111,12 @@ export const LoginView = () => {
                 <p className="text-center text-stone-500 mb-8 text-sm">
                     {isSignUp ? "Join the household to start cleaning." : "Please sign in to access EasyClean."}
                 </p>
+
+                {successMsg && (
+                    <div className="mb-6 bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl text-sm text-center">
+                        {successMsg}
+                    </div>
+                )}
 
                 {isSignUp ? (
                     /* SIGN UP FORM */
@@ -182,7 +197,7 @@ export const LoginView = () => {
                 )}
 
                 <div className="mt-6 text-center">
-                    <button onClick={() => { setIsSignUp(!isSignUp); setError(null); }} className="text-stone-400 text-sm hover:text-teal-600 transition-colors">
+                    <button onClick={() => { setIsSignUp(!isSignUp); setError(null); setSuccessMsg(null); }} className="text-stone-400 text-sm hover:text-teal-600 transition-colors">
                         {isSignUp ? "Already have an account? Sign In" : "Need an account? Create one"}
                     </button>
                 </div>
