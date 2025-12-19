@@ -4,7 +4,6 @@ import { ArrowLeft, Trash, Plus, Repeat, Edit, Check, X, AlertTriangle, Download
 
 interface InventoryViewProps {
   inventory: Task[];
-  // setInventory removed as it is unused
   onBack: () => void;
   initialFilter?: string | null;
   availableZones: string[];
@@ -39,6 +38,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const [filterZone, setFilterZone] = useState(initialFilter || 'All');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingRecurrenceId, setEditingRecurrenceId] = useState<string | null>(null);
+  const [tempRecurrence, setTempRecurrence] = useState<number>(0);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -73,6 +74,15 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       ? inventory 
       : inventory.filter(t => t.zone === filterZone);
 
+  // Helper to determine duration color styles
+  const getDurationStyles = (duration: number) => {
+    if (duration <= 15) return "bg-emerald-50 text-emerald-700 border-emerald-200";
+    if (duration <= 30) return "bg-teal-50 text-teal-700 border-teal-200";
+    if (duration <= 45) return "bg-amber-50 text-amber-700 border-amber-200";
+    if (duration <= 60) return "bg-orange-50 text-orange-700 border-orange-200";
+    return "bg-rose-50 text-rose-700 border-rose-200";
+  };
+
   const handleSave = () => {
       if(!newItem.label || !newItem.zone) {
           alert("Please provide a task name and select a zone.");
@@ -80,7 +90,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       }
 
       if (editingId) {
-          // Use onUpdateTask to ensure persistence
           onUpdateTask(editingId, newItem);
           setEditingId(null);
       } else {
@@ -91,7 +100,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               status: 'pending',
               dependency: newItem.dependency || null,
               lastCompleted: null,
-              created_at: new Date().toISOString()
+              created_at: new Date().toISOString(),
+              user_id: '' // Managed by hook
           } as Task;
           onAddTask(taskToAdd);
       }
@@ -125,7 +135,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
 
   const handleToggleStatus = (id: string, currentStatus: string) => {
       const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
-      // Use onUpdateTask for persistence
       onUpdateTask(id, { status: newStatus as Status });
   };
 
@@ -138,6 +147,16 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       }
   };
 
+  const startEditingRecurrence = (task: Task) => {
+      setEditingRecurrenceId(task.id);
+      setTempRecurrence(task.recurrence);
+  };
+
+  const saveRecurrence = (id: string) => {
+      onUpdateTask(id, { recurrence: tempRecurrence });
+      setEditingRecurrenceId(null);
+  };
+
   const handleImportClick = () => {
       fileInputRef.current?.click();
   };
@@ -147,7 +166,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       if (file) {
           onImport(file);
       }
-      // Reset input so same file can be selected again if needed
       if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -161,7 +179,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                 <h2 className="text-xl font-serif text-stone-900">Task Management</h2>
               </div>
               
-              {/* Import/Export Buttons */}
               <div className="flex items-center gap-2">
                   <button onClick={onExport} className="text-stone-400 hover:text-teal-600 transition-colors p-2 hover:bg-white rounded-xl" title="Export Tasks">
                       <Download className="w-5 h-5" />
@@ -179,7 +196,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               </div>
           </div>
 
-          {/* Filter Bar */}
           <div className="flex gap-2 overflow-x-auto pb-4 mb-2 no-scrollbar px-1">
               <button 
                   onClick={() => setFilterZone('All')}
@@ -194,7 +210,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                       className={`group flex items-center gap-2 px-5 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${filterZone === z ? 'bg-teal-500 text-white shadow-md shadow-teal-200 scale-105 pr-3' : 'bg-white text-stone-600 border border-stone-200 hover:border-teal-300'}`}
                   >
                       {z}
-                      {/* Delete Zone Button - Only visible when active */}
                       {filterZone === z && (
                         <span 
                           onClick={(e) => {
@@ -212,7 +227,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               ))}
           </div>
 
-          {/* Task List - Added pt-4 to fix hover clipping */}
           <div className="flex-1 overflow-y-auto pr-2 space-y-3 pb-24 pt-4">
               {displayedInventory.length === 0 ? (
                   <div className="text-center py-12 text-stone-500 text-sm bg-white/50 rounded-2xl border border-dashed border-stone-300 mt-4">
@@ -239,11 +253,34 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                     <PriorityBadge priority={task.priority || 2} />
                                     {task.recurrence > 0 && (
                                         <div 
-                                            className="text-teal-600 flex items-center gap-1 bg-teal-50 px-2 py-0.5 rounded border border-teal-100" 
+                                            className="group/recurrence relative text-teal-600 flex items-center gap-1 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 hover:bg-teal-100 transition-colors cursor-pointer" 
                                             title={`Repeats every ${task.recurrence} days`}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                startEditingRecurrence(task);
+                                            }}
                                         >
-                                            <Repeat className="w-3 h-3" />
-                                            <span>{task.recurrence}d</span>
+                                            {editingRecurrenceId === task.id ? (
+                                                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                                    <input 
+                                                        type="number" 
+                                                        className="w-8 text-center bg-white border border-teal-300 rounded text-xs p-0 h-4"
+                                                        value={tempRecurrence}
+                                                        onChange={(e) => setTempRecurrence(parseInt(e.target.value) || 0)}
+                                                        onBlur={() => saveRecurrence(task.id)}
+                                                        onKeyDown={(e) => e.key === 'Enter' && saveRecurrence(task.id)}
+                                                        autoFocus
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    />
+                                                    <span className="text-[9px]">d</span>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <Repeat className="w-3 h-3" />
+                                                    <span className="border-b border-dashed border-teal-400/50">{task.recurrence}d</span>
+                                                    <Edit className="w-3 h-3 opacity-50 group-hover/recurrence:opacity-100 transition-opacity text-teal-600" />
+                                                </>
+                                            )}
                                         </div>
                                     )}
                                     {dependencyTask && (
@@ -256,7 +293,9 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                             </div>
                         </div>
                         <div className="flex items-center gap-3 pl-2">
-                            <span className="text-xs font-mono font-bold text-stone-600 bg-stone-100 px-2 py-1 rounded-md">{task.duration}m</span>
+                            <span className={`text-xs font-mono font-bold px-2 py-1 rounded-md border ${getDurationStyles(task.duration)}`}>
+                                {task.duration}m
+                            </span>
                             <button onClick={() => handleEdit(task)} className="text-stone-500 hover:text-teal-600 transition-colors p-2 hover:bg-teal-50 rounded-full" title="Edit">
                                 <Edit className="w-4 h-4" />
                             </button>
@@ -269,7 +308,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               })}
           </div>
 
-          {/* Floating Action Button for Add Task */}
           <button 
             onClick={() => setIsAdding(true)}
             className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white rounded-full shadow-lg shadow-emerald-200 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex items-center justify-center z-40"
@@ -278,7 +316,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
             <Plus className="w-7 h-7" />
           </button>
 
-          {/* ADD/EDIT TASK MODAL */}
           {isAdding && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-sm animate-in fade-in duration-200">
                   <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-6 space-y-6 animate-in zoom-in-95 duration-200 border border-stone-100 max-h-[90vh] overflow-y-auto custom-scrollbar">
@@ -293,7 +330,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                       </div>
                       
                       <div className="space-y-5">
-                          {/* Zone Selection */}
                           <div className="space-y-2">
                               <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Zone / Area</label>
                               {isAddingZone ? (
@@ -325,7 +361,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                               )}
                           </div>
 
-                          {/* Task Label */}
                           <div className="space-y-2">
                               <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Task Name</label>
                               <input 
@@ -336,7 +371,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                               />
                           </div>
 
-                          {/* Grid for Duration & Priority */}
                           <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-2">
                                   <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Est. Time</label>
@@ -366,7 +400,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                               </div>
                           </div>
                           
-                          {/* Dependency Selection */}
                            <div className="space-y-2">
                               <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Prerequisite (Dependency)</label>
                               <div className="relative">
@@ -378,7 +411,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                   >
                                       <option value="">None (No prerequisites)</option>
                                       {inventory
-                                          .filter(t => t.id !== editingId) // Can't depend on itself
+                                          .filter(t => t.id !== editingId)
                                           .map(t => (
                                           <option key={t.id} value={t.id}>
                                               {t.label} ({t.zone})
@@ -388,7 +421,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                               </div>
                           </div>
 
-                          {/* Recurrence */}
                           <div className="bg-stone-50 border border-stone-100 rounded-xl p-3 flex items-center justify-between">
                               <label className="flex items-center gap-2 text-sm text-stone-700 cursor-pointer select-none font-bold">
                                   <input type="checkbox" 
@@ -427,7 +459,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               </div>
           )}
 
-          {/* DELETE CONFIRMATION MODAL */}
           {deletingId && (
               <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-in fade-in duration-200">
                   <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-8 space-y-6 animate-in zoom-in-95 duration-200 text-center border border-stone-100">
