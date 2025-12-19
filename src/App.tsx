@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useInventory } from './hooks/useInventory';
 import { DashboardView } from './components/DashboardView';
 import { ExecutionView } from './components/ExecutionView';
@@ -23,7 +23,9 @@ export default function App() {
     deleteZone,
     user,
     loading,
-    // Removed unused variables: updateTask, exportData, importData
+    updateTask,
+    exportData,
+    importData
   } = useInventory();
 
   // 1. Loading State
@@ -44,8 +46,6 @@ export default function App() {
   const handleLogout = async () => {
       await supabase.auth.signOut();
   };
-
-  // Removed unused fileInputRef
 
   return (
     <div className="min-h-screen flex flex-col items-center p-4 sm:p-6 lg:p-8 bg-gradient-to-br from-stone-50 to-emerald-50/30">
@@ -93,11 +93,13 @@ export default function App() {
           {view === 'inventory' && (
             <InventoryView 
                 inventory={inventory} 
-                setInventory={setInventory}
                 onAddTask={addTask} 
                 onDeleteTask={deleteTask} 
                 onAddZone={addZone}
                 onDeleteZone={deleteZone}
+                onUpdateTask={updateTask}
+                onExport={exportData}
+                onImport={importData}
                 availableZones={zones} 
                 onBack={() => setView('dashboard')} 
                 initialFilter={filterZone} 

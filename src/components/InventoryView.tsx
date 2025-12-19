@@ -1,17 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Task, Priority, Status } from '../types';
-import { ArrowLeft, Trash, Plus, Repeat, Edit, Check, X, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Trash, Plus, Repeat, Edit, Check, X, AlertTriangle, Download, Upload, Link } from 'lucide-react';
 
 interface InventoryViewProps {
   inventory: Task[];
-  setInventory: React.Dispatch<React.SetStateAction<Task[]>>;
+  // setInventory removed as it is unused
   onBack: () => void;
   initialFilter?: string | null;
   availableZones: string[];
   onAddZone: (zone: string) => void;
   onDeleteZone: (zone: string) => void;
   onAddTask: (task: Task) => void;
+  onUpdateTask: (id: string, updates: Partial<Task>) => void;
   onDeleteTask: (id: string) => void;
+  onExport: () => void;
+  onImport: (file: File) => void;
 }
 
 const PriorityBadge = ({ priority }: { priority: number }) => {
@@ -28,7 +31,7 @@ const PriorityBadge = ({ priority }: { priority: number }) => {
 };
 
 export const InventoryView: React.FC<InventoryViewProps> = ({ 
-  inventory, setInventory, onBack, initialFilter, availableZones, onAddZone, onDeleteZone, onAddTask, onDeleteTask
+  inventory, onBack, initialFilter, availableZones, onAddZone, onDeleteZone, onAddTask, onUpdateTask, onDeleteTask, onExport, onImport
 }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingZone, setIsAddingZone] = useState(false);
@@ -36,9 +39,11 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const [filterZone, setFilterZone] = useState(initialFilter || 'All');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [editingRecurrenceId, setEditingRecurrenceId] = useState<string | null>(null); // New state for editing recurrence
+  const [editingRecurrenceId, setEditingRecurrenceId] = useState<string | null>(null);
   const [tempRecurrence, setTempRecurrence] = useState<number>(0);
   
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const defaultZone = availableZones.length > 0 ? availableZones[0] : '';
   const startZone = (initialFilter && initialFilter !== 'All') ? initialFilter : defaultZone;
 
@@ -47,7 +52,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       label: '', 
       duration: 10,
       priority: 2 as Priority,
-      recurrence: 0
+      recurrence: 0,
+      dependency: null as string | null
   });
 
   // Reset form when opening/closing or changing filter
@@ -59,7 +65,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
             label: '', 
             duration: 10,
             priority: 2,
-            recurrence: 0
+            recurrence: 0,
+            dependency: null
         });
       }
   }, [isAdding, filterZone, availableZones]);
@@ -75,16 +82,16 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       }
 
       if (editingId) {
-          setInventory(prev => prev.map(t => t.id === editingId ? { ...t, ...newItem } : t));
+          // Use onUpdateTask to ensure persistence
+          onUpdateTask(editingId, newItem);
           setEditingId(null);
       } else {
           const id = Math.random().toString(36).substr(2, 9);
-          // Removed user_id and created_at to match Task type and fix TS error
           const taskToAdd: Task = {
               ...newItem,
               id,
               status: 'pending',
-              dependency: null,
+              dependency: newItem.dependency || null,
               lastCompleted: null
           };
           onAddTask(taskToAdd);
@@ -99,7 +106,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           label: task.label,
           duration: task.duration,
           priority: task.priority,
-          recurrence: task.recurrence || 0
+          recurrence: task.recurrence || 0,
+          dependency: task.dependency
       });
       setEditingId(task.id);
       setIsAdding(true);
@@ -118,7 +126,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
 
   const handleToggleStatus = (id: string, currentStatus: string) => {
       const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
-      setInventory(prev => prev.map(t => t.id === id ? { ...t, status: newStatus as Status } : t));
+      // Use onUpdateTask for persistence
+      onUpdateTask(id, { status: newStatus as Status });
   };
 
   const handleCreateZone = () => {
@@ -136,17 +145,50 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   };
 
   const saveRecurrence = (id: string) => {
-      setInventory(prev => prev.map(t => t.id === id ? { ...t, recurrence: tempRecurrence } : t));
+      // Use onUpdateTask for persistence
+      onUpdateTask(id, { recurrence: tempRecurrence });
       setEditingRecurrenceId(null);
+  };
+
+  const handleImportClick = () => {
+      fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          onImport(file);
+      }
+      // Reset input so same file can be selected again if needed
+      if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return (
       <div className="flex flex-col h-full animate-in fade-in relative">
           <div className="flex justify-between items-center mb-6 px-1">
-              <button onClick={onBack} className="text-stone-600 hover:text-stone-900 text-sm font-bold flex items-center gap-2 px-4 py-2 rounded-full hover:bg-white transition-colors">
-                  <ArrowLeft className="w-4 h-4" /> Back
-              </button>
-              <h2 className="text-xl font-serif text-stone-900">Task Management</h2>
+              <div className="flex items-center gap-4">
+                <button onClick={onBack} className="text-stone-600 hover:text-stone-900 text-sm font-bold flex items-center gap-2 px-4 py-2 rounded-full hover:bg-white transition-colors">
+                    <ArrowLeft className="w-4 h-4" /> Back
+                </button>
+                <h2 className="text-xl font-serif text-stone-900">Task Management</h2>
+              </div>
+              
+              {/* Import/Export Buttons */}
+              <div className="flex items-center gap-2">
+                  <button onClick={onExport} className="text-stone-400 hover:text-teal-600 transition-colors p-2 hover:bg-white rounded-xl" title="Export Tasks">
+                      <Download className="w-5 h-5" />
+                  </button>
+                  <button onClick={handleImportClick} className="text-stone-400 hover:text-teal-600 transition-colors p-2 hover:bg-white rounded-xl" title="Import Tasks">
+                      <Upload className="w-5 h-5" />
+                  </button>
+                  <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      onChange={handleFileChange} 
+                      className="hidden" 
+                      accept=".json" 
+                  />
+              </div>
           </div>
 
           {/* Filter Bar */}
@@ -188,69 +230,78 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                   <div className="text-center py-12 text-stone-500 text-sm bg-white/50 rounded-2xl border border-dashed border-stone-300 mt-4">
                       No items found in this filter.
                   </div>
-              ) : displayedInventory.map(task => (
-                  <div key={task.id} className={`card-panel p-4 rounded-2xl flex justify-between items-center group transition-all card-hover ${task.status === 'completed' ? 'opacity-60 bg-white/60' : 'bg-white'}`}>
-                      <div className="flex items-start gap-4 flex-1">
-                          <div 
-                              onClick={() => handleToggleStatus(task.id, task.status)}
-                              className={`mt-0.5 w-6 h-6 rounded-lg border-2 cursor-pointer flex items-center justify-center transition-all ${task.status === 'completed' ? 'bg-emerald-500 border-emerald-500 text-white scale-110' : 'border-stone-300 hover:border-teal-400 bg-white'}`}
-                          >
-                              {task.status === 'completed' && <Check className="w-4 h-4" />}
-                          </div>
+              ) : displayedInventory.map(task => {
+                  const dependencyTask = task.dependency ? inventory.find(t => t.id === task.dependency) : null;
+                  return (
+                    <div key={task.id} className={`card-panel p-4 rounded-2xl flex justify-between items-center group transition-all card-hover ${task.status === 'completed' ? 'opacity-60 bg-white/60' : 'bg-white'}`}>
+                        <div className="flex items-start gap-4 flex-1">
+                            <div 
+                                onClick={() => handleToggleStatus(task.id, task.status)}
+                                className={`mt-0.5 w-6 h-6 rounded-lg border-2 cursor-pointer flex items-center justify-center transition-all ${task.status === 'completed' ? 'bg-emerald-500 border-emerald-500 text-white scale-110' : 'border-stone-300 hover:border-teal-400 bg-white'}`}
+                            >
+                                {task.status === 'completed' && <Check className="w-4 h-4" />}
+                            </div>
 
-                          <div className="flex-1">
-                              <div className={`font-bold text-sm text-stone-800 mb-1 ${task.status === 'completed' ? 'line-through text-stone-500' : ''}`}>
-                                  {task.label}
-                              </div>
-                              <div className="flex gap-2 text-[10px] font-bold uppercase items-center">
-                                  <span className="text-stone-500 bg-stone-100 px-2 py-0.5 rounded">{task.zone}</span>
-                                  <PriorityBadge priority={task.priority || 2} />
-                                  {task.recurrence > 0 && (
-                                      <div 
-                                        className="group/recurrence relative text-teal-600 flex items-center gap-1 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 hover:bg-teal-100 transition-colors cursor-pointer" 
-                                        title={`Repeats every ${task.recurrence} days`}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            startEditingRecurrence(task);
-                                        }}
-                                      >
-                                          {editingRecurrenceId === task.id ? (
-                                              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                                                  <input 
-                                                      type="number" 
-                                                      className="w-8 text-center bg-white border border-teal-300 rounded text-xs p-0 h-4"
-                                                      value={tempRecurrence}
-                                                      onChange={(e) => setTempRecurrence(parseInt(e.target.value) || 0)}
-                                                      onBlur={() => saveRecurrence(task.id)}
-                                                      onKeyDown={(e) => e.key === 'Enter' && saveRecurrence(task.id)}
-                                                      autoFocus
-                                                      onClick={(e) => e.stopPropagation()}
-                                                  />
-                                                  <span className="text-[9px]">d</span>
-                                              </div>
-                                          ) : (
-                                              <>
-                                                  <Repeat className="w-3 h-3" />
-                                                  <span className="border-b border-dashed border-teal-400/50">{task.recurrence}d</span>
-                                                  <Edit className="w-3 h-3 opacity-50 group-hover/recurrence:opacity-100 transition-opacity text-teal-600" />
-                                              </>
-                                          )}
-                                      </div>
-                                  )}
-                              </div>
-                          </div>
-                      </div>
-                      <div className="flex items-center gap-3 pl-2">
-                          <span className="text-xs font-mono font-bold text-stone-600 bg-stone-100 px-2 py-1 rounded-md">{task.duration}m</span>
-                          <button onClick={() => handleEdit(task)} className="text-stone-500 hover:text-teal-600 transition-colors p-2 hover:bg-teal-50 rounded-full" title="Edit">
-                              <Edit className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => handleDeleteClick(task.id)} className="text-stone-500 hover:text-red-600 transition-colors p-2 hover:bg-red-50 rounded-full" title="Delete">
-                              <Trash className="w-4 h-4" />
-                          </button>
-                      </div>
-                  </div>
-              ))}
+                            <div className="flex-1">
+                                <div className={`font-bold text-sm text-stone-800 mb-1 ${task.status === 'completed' ? 'line-through text-stone-500' : ''}`}>
+                                    {task.label}
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-[10px] font-bold uppercase items-center">
+                                    <span className="text-stone-500 bg-stone-100 px-2 py-0.5 rounded">{task.zone}</span>
+                                    <PriorityBadge priority={task.priority || 2} />
+                                    {task.recurrence > 0 && (
+                                        <div 
+                                            className="group/recurrence relative text-teal-600 flex items-center gap-1 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 hover:bg-teal-100 transition-colors cursor-pointer" 
+                                            title={`Repeats every ${task.recurrence} days`}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                startEditingRecurrence(task);
+                                            }}
+                                        >
+                                            {editingRecurrenceId === task.id ? (
+                                                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                                    <input 
+                                                        type="number" 
+                                                        className="w-8 text-center bg-white border border-teal-300 rounded text-xs p-0 h-4"
+                                                        value={tempRecurrence}
+                                                        onChange={(e) => setTempRecurrence(parseInt(e.target.value) || 0)}
+                                                        onBlur={() => saveRecurrence(task.id)}
+                                                        onKeyDown={(e) => e.key === 'Enter' && saveRecurrence(task.id)}
+                                                        autoFocus
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    />
+                                                    <span className="text-[9px]">d</span>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <Repeat className="w-3 h-3" />
+                                                    <span className="border-b border-dashed border-teal-400/50">{task.recurrence}d</span>
+                                                    <Edit className="w-3 h-3 opacity-50 group-hover/recurrence:opacity-100 transition-opacity text-teal-600" />
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+                                    {dependencyTask && (
+                                        <div className="flex items-center gap-1 text-stone-500 bg-stone-50 px-2 py-0.5 rounded border border-stone-200 truncate max-w-[150px]" title={`Depends on: ${dependencyTask.label}`}>
+                                            <Link className="w-3 h-3" />
+                                            <span className="truncate">{dependencyTask.label}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 pl-2">
+                            <span className="text-xs font-mono font-bold text-stone-600 bg-stone-100 px-2 py-1 rounded-md">{task.duration}m</span>
+                            <button onClick={() => handleEdit(task)} className="text-stone-500 hover:text-teal-600 transition-colors p-2 hover:bg-teal-50 rounded-full" title="Edit">
+                                <Edit className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => handleDeleteClick(task.id)} className="text-stone-500 hover:text-red-600 transition-colors p-2 hover:bg-red-50 rounded-full" title="Delete">
+                                <Trash className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                  );
+              })}
           </div>
 
           {/* Floating Action Button for Add Task */}
@@ -265,7 +316,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           {/* ADD/EDIT TASK MODAL */}
           {isAdding && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-                  <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-6 space-y-6 animate-in zoom-in-95 duration-200 border border-stone-100">
+                  <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-6 space-y-6 animate-in zoom-in-95 duration-200 border border-stone-100 max-h-[90vh] overflow-y-auto custom-scrollbar">
                       <div className="flex justify-between items-center border-b border-stone-100 pb-4">
                           <div>
                               <h3 className="text-xl font-serif text-stone-900">{editingId ? "Edit Task" : "New Task"}</h3>
@@ -346,6 +397,28 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                       <option value={1}>High (Urgent)</option>
                                       <option value={2}>Medium (Normal)</option>
                                       <option value={3}>Low (Casual)</option>
+                                  </select>
+                              </div>
+                          </div>
+                          
+                          {/* Dependency Selection */}
+                           <div className="space-y-2">
+                              <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Prerequisite (Dependency)</label>
+                              <div className="relative">
+                                  <Link className="w-4 h-4 absolute left-3 top-3.5 text-stone-400" />
+                                  <select 
+                                      className="w-full pl-10 bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none font-medium cursor-pointer appearance-none"
+                                      value={newItem.dependency || ""}
+                                      onChange={e => setNewItem({...newItem, dependency: e.target.value || null})}
+                                  >
+                                      <option value="">None (No prerequisites)</option>
+                                      {inventory
+                                          .filter(t => t.id !== editingId) // Can't depend on itself
+                                          .map(t => (
+                                          <option key={t.id} value={t.id}>
+                                              {t.label} ({t.zone})
+                                          </option>
+                                      ))}
                                   </select>
                               </div>
                           </div>
