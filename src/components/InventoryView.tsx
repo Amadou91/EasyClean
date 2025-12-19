@@ -9,6 +9,7 @@ interface InventoryViewProps {
   initialFilter?: string | null;
   availableZones: string[];
   onAddZone: (zone: string) => void;
+  onDeleteZone: (zone: string) => void;
   onAddTask: (task: Task) => void;
   onDeleteTask: (id: string) => void;
 }
@@ -27,7 +28,7 @@ const PriorityBadge = ({ priority }: { priority: number }) => {
 };
 
 export const InventoryView: React.FC<InventoryViewProps> = ({ 
-  inventory, setInventory, onBack, initialFilter, availableZones, onAddZone, onAddTask, onDeleteTask
+  inventory, setInventory, onBack, initialFilter, availableZones, onAddZone, onDeleteZone, onAddTask, onDeleteTask
 }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingZone, setIsAddingZone] = useState(false);
@@ -147,15 +148,29 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                   <button 
                       key={z}
                       onClick={() => setFilterZone(z)}
-                      className={`px-5 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${filterZone === z ? 'bg-teal-500 text-white shadow-md shadow-teal-200 scale-105' : 'bg-white text-stone-600 border border-stone-200 hover:border-teal-300'}`}
+                      className={`group flex items-center gap-2 px-5 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${filterZone === z ? 'bg-teal-500 text-white shadow-md shadow-teal-200 scale-105 pr-3' : 'bg-white text-stone-600 border border-stone-200 hover:border-teal-300'}`}
                   >
                       {z}
+                      {/* Delete Zone Button - Only visible when active */}
+                      {filterZone === z && (
+                        <span 
+                          onClick={(e) => {
+                             e.stopPropagation();
+                             onDeleteZone(z);
+                             setFilterZone('All');
+                          }}
+                          className="ml-1 p-1 bg-teal-600 rounded-full hover:bg-red-500 transition-colors cursor-pointer"
+                          title={`Delete ${z}`}
+                        >
+                            <X className="w-3 h-3 text-white" />
+                        </span>
+                      )}
                   </button>
               ))}
           </div>
 
-          {/* Task List */}
-          <div className="flex-1 overflow-y-auto pr-2 space-y-3 pb-24">
+          {/* Task List - Added pt-4 to fix hover clipping */}
+          <div className="flex-1 overflow-y-auto pr-2 space-y-3 pb-24 pt-4">
               {displayedInventory.length === 0 ? (
                   <div className="text-center py-12 text-stone-500 text-sm bg-white/50 rounded-2xl border border-dashed border-stone-300 mt-4">
                       No items found in this filter.

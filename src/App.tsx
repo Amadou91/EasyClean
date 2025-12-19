@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useInventory } from './hooks/useInventory';
 import { DashboardView } from './components/DashboardView';
 import { ExecutionView } from './components/ExecutionView';
@@ -18,9 +18,9 @@ export default function App() {
     setInventory,
     zones, 
     addTask, 
-    // updateTask was removed here because it is not used in this component yet
     deleteTask, 
     addZone, 
+    deleteZone, // New
     user,
     loading
   } = useInventory();
@@ -94,6 +94,7 @@ export default function App() {
                 onAddTask={addTask} 
                 onDeleteTask={deleteTask} 
                 onAddZone={addZone} 
+                onDeleteZone={deleteZone} // New
                 availableZones={zones} 
                 onBack={() => setView('dashboard')} 
                 initialFilter={filterZone} 

@@ -52,7 +52,6 @@ export function useInventory() {
             // Recurrence Logic Check
             if (taskData) {
                 const now = new Date();
-                // Fix: Use 'unknown' instead of 'any' to satisfy linter
                 const updates: Promise<unknown>[] = [];
                 const finalTasks = taskData.map((t: Task & { completed_at?: string }) => {
                     if (t.status === 'completed' && t.recurrence > 0 && t.completed_at) {
@@ -119,8 +118,6 @@ export function useInventory() {
     };
 
     const updateTask = async (id: string, updates: Partial<Task>) => {
-        if (!user) return; // Guard clause added here
-        
         setInventory(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
         
         // If marking complete, add timestamp and user
@@ -139,11 +136,17 @@ export function useInventory() {
     };
 
     const addZone = async (name: string) => {
-        if (!user) return; // Guard clause added here
-        
         setZones(prev => [...prev, name]);
         await supabase.from('zones').insert([{ name }]);
     };
 
-    return { inventory, setInventory, zones, user, loading, addTask, updateTask, deleteTask, addZone };
+    // New: Delete Zone
+    const deleteZone = async (name: string) => {
+        if (window.confirm(`Delete "${name}" zone? Tasks will remain but the filter will be removed.`)) {
+            setZones(prev => prev.filter(z => z !== name));
+            await supabase.from('zones').delete().eq('name', name);
+        }
+    };
+
+    return { inventory, setInventory, zones, user, loading, addTask, updateTask, deleteTask, addZone, deleteZone };
 }
