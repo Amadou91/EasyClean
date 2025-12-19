@@ -73,14 +73,14 @@ export const LoginView = () => {
         setSuccessMsg(null);
 
         // Create User
-        // We pass the username in "options.data" so the Postgres Trigger can save it to the profile
-        // We also explicitly set the Redirect URL to your production domain
+        // Passing username in options.data.username ensures it goes to raw_user_meta_data
         const { error } = await supabase.auth.signUp({
             email: newEmail,
             password,
             options: {
                 data: {
-                    username: newUsername
+                    username: newUsername,
+                    display_name: newUsername // Optional: Helpful for UI later
                 },
                 emailRedirectTo: 'https://cleaning.johnnyautomates.com' 
             }
