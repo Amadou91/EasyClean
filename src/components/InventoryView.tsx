@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Task, Priority, Status } from '../types';
-import { ArrowLeft, Trash, Plus, Repeat, Edit, Check } from 'lucide-react';
+import { ArrowLeft, Trash, Plus, Repeat, Edit, Check, X, AlertTriangle } from 'lucide-react';
 
 interface InventoryViewProps {
   inventory: Task[];
@@ -34,6 +34,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const [newZoneName, setNewZoneName] = useState("");
   const [filterZone, setFilterZone] = useState(initialFilter || 'All');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   
   const defaultZone = availableZones.length > 0 ? availableZones[0] : '';
   const startZone = (initialFilter && initialFilter !== 'All') ? initialFilter : defaultZone;
@@ -46,11 +47,19 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       recurrence: 0
   });
 
+  // Reset form when opening/closing or changing filter
   useEffect(() => {
-      if (!editingId && filterZone !== 'All') {
-          setNewItem(prev => ({ ...prev, zone: filterZone }));
+      if (!isAdding) {
+          setEditingId(null);
+          setNewItem({ 
+            zone: filterZone !== 'All' ? filterZone : (availableZones[0] || ''), 
+            label: '', 
+            duration: 10,
+            priority: 2,
+            recurrence: 0
+        });
       }
-  }, [filterZone, editingId]);
+  }, [isAdding, filterZone, availableZones]);
 
   const displayedInventory = filterZone === 'All' 
       ? inventory 
@@ -67,24 +76,17 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           setEditingId(null);
       } else {
           const id = Math.random().toString(36).substr(2, 9);
-          // Use onAddTask prop instead of local state setter to fix unused var error
-          onAddTask({
+          const taskToAdd: Task = {
               ...newItem,
               id,
               status: 'pending',
               dependency: null,
               lastCompleted: null
-          });
+          };
+          onAddTask(taskToAdd);
       }
       
       setIsAdding(false);
-      setNewItem({ 
-          zone: newItem.zone,
-          label: '', 
-          duration: 10,
-          priority: 2,
-          recurrence: 0
-      });
   };
 
   const handleEdit = (task: Task) => {
@@ -99,22 +101,14 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       setIsAdding(true);
   };
 
-  const handleCancelEdit = () => {
-      setIsAdding(false);
-      setEditingId(null);
-      setNewItem({ 
-          zone: filterZone !== 'All' ? filterZone : (availableZones[0] || ''), 
-          label: '', 
-          duration: 10,
-          priority: 2,
-          recurrence: 0
-      });
+  const handleDeleteClick = (id: string) => {
+      setDeletingId(id);
   };
 
-  // Fix: Use onDeleteTask prop inside the handler, and use this handler in JSX
-  const handleDelete = (id: string) => {
-      if (window.confirm("Are you sure you want to delete this task?")) {
-          onDeleteTask(id);
+  const confirmDelete = () => {
+      if (deletingId) {
+          onDeleteTask(deletingId);
+          setDeletingId(null);
       }
   };
 
@@ -133,14 +127,15 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   };
 
   return (
-      <div className="flex flex-col h-full animate-in fade-in">
-          <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col h-full animate-in fade-in relative">
+          <div className="flex justify-between items-center mb-6 px-1">
               <button onClick={onBack} className="text-stone-600 hover:text-stone-900 text-sm font-bold flex items-center gap-2 px-4 py-2 rounded-full hover:bg-white transition-colors">
                   <ArrowLeft className="w-4 h-4" /> Back
               </button>
               <h2 className="text-xl font-serif text-stone-900">Task Management</h2>
           </div>
 
+          {/* Filter Bar */}
           <div className="flex gap-2 overflow-x-auto pb-4 mb-2 no-scrollbar px-1">
               <button 
                   onClick={() => setFilterZone('All')}
@@ -159,6 +154,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               ))}
           </div>
 
+          {/* Task List */}
           <div className="flex-1 overflow-y-auto pr-2 space-y-3 pb-24">
               {displayedInventory.length === 0 ? (
                   <div className="text-center py-12 text-stone-500 text-sm bg-white/50 rounded-2xl border border-dashed border-stone-300 mt-4">
@@ -192,10 +188,10 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                       </div>
                       <div className="flex items-center gap-3 pl-2">
                           <span className="text-xs font-mono font-bold text-stone-600 bg-stone-100 px-2 py-1 rounded-md">{task.duration}m</span>
-                          <button onClick={() => handleEdit(task)} className="text-stone-500 hover:text-teal-600 transition-colors p-2 hover:bg-teal-50 rounded-full">
+                          <button onClick={() => handleEdit(task)} className="text-stone-500 hover:text-teal-600 transition-colors p-2 hover:bg-teal-50 rounded-full" title="Edit">
                               <Edit className="w-4 h-4" />
                           </button>
-                          <button onClick={() => handleDelete(task.id)} className="text-stone-500 hover:text-red-600 transition-colors p-2 hover:bg-red-50 rounded-full">
+                          <button onClick={() => handleDeleteClick(task.id)} className="text-stone-500 hover:text-red-600 transition-colors p-2 hover:bg-red-50 rounded-full" title="Delete">
                               <Trash className="w-4 h-4" />
                           </button>
                       </div>
@@ -203,107 +199,172 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               ))}
           </div>
 
-          <div className="fixed bottom-0 left-0 right-0 p-4 sm:relative sm:p-0">
-              <div className="absolute inset-0 bg-gradient-to-t from-white via-white/80 to-transparent h-24 -z-10 sm:hidden pointer-events-none"></div>
+          {/* Floating Action Button for Add Task */}
+          <button 
+            onClick={() => setIsAdding(true)}
+            className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white rounded-full shadow-lg shadow-emerald-200 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex items-center justify-center z-40"
+            title="Add New Task"
+          >
+            <Plus className="w-7 h-7" />
+          </button>
 
-              {isAdding ? (
-                  <div className="card-panel p-6 rounded-[2rem] shadow-2xl animate-enter space-y-5 border-t border-stone-200 bg-white relative z-10 ring-4 ring-emerald-50">
-                      <div className="flex justify-between items-center mb-1">
-                          <h3 className="text-xs font-black text-stone-500 uppercase tracking-widest">{editingId ? "Edit Task" : "New Task"}</h3>
-                          <button onClick={handleCancelEdit} className="text-stone-500 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 rounded-full p-2 transition-colors">&times;</button>
+          {/* ADD/EDIT TASK MODAL */}
+          {isAdding && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+                  <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-6 space-y-6 animate-in zoom-in-95 duration-200 border border-stone-100">
+                      <div className="flex justify-between items-center border-b border-stone-100 pb-4">
+                          <div>
+                              <h3 className="text-xl font-serif text-stone-900">{editingId ? "Edit Task" : "New Task"}</h3>
+                              <p className="text-xs text-stone-500 mt-1">Fill in the details below</p>
+                          </div>
+                          <button onClick={() => setIsAdding(false)} className="text-stone-400 hover:text-stone-800 bg-stone-50 hover:bg-stone-100 rounded-full p-2 transition-colors">
+                            <X className="w-5 h-5" />
+                          </button>
                       </div>
                       
-                      <div className="grid grid-cols-1 gap-4">
-                          {isAddingZone ? (
-                              <div className="flex gap-2 animate-enter">
-                                  <input 
-                                      className="flex-1 bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none transition-all font-medium"
-                                      placeholder="New Area Name"
-                                      value={newZoneName}
-                                      onChange={e => setNewZoneName(e.target.value)}
-                                  />
-                                  <button onClick={handleCreateZone} className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-bold shadow-teal-200 shadow-lg">Save</button>
-                                  <button onClick={() => setIsAddingZone(false)} className="px-3 text-stone-500 hover:text-stone-700 bg-stone-50 rounded-xl">&times;</button>
-                              </div>
-                          ) : (
-                              <div className="flex gap-2">
-                                  <select 
-                                      className="flex-1 bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 text-sm focus:border-emerald-400 outline-none font-medium appearance-none"
-                                      value={newItem.zone || ""} 
-                                      onChange={e => setNewItem({...newItem, zone: e.target.value})}
-                                  >
-                                      <option value="" disabled>Select Area</option>
-                                      {availableZones.map(z => <option key={z} value={z}>{z}</option>)}
-                                  </select>
-                                  <button onClick={() => setIsAddingZone(true)} className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-xl border border-stone-200 transition-colors" title="Add New Area">
-                                      <Plus className="w-4 h-4" />
-                                  </button>
-                              </div>
-                          )}
-                      </div>
-
-                      <input 
-                          className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none transition-all placeholder:text-stone-500 font-medium"
-                          placeholder="What needs to be done?"
-                          value={newItem.label}
-                          onChange={e => setNewItem({...newItem, label: e.target.value})}
-                      />
-
-                      <div className="grid grid-cols-2 gap-4">
-                          <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl p-3 focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-100 transition-all">
-                              <input 
-                                  type="number" 
-                                  className="bg-transparent text-stone-900 text-sm w-full outline-none font-bold"
-                                  placeholder="Min"
-                                  value={newItem.duration}
-                                  onChange={e => setNewItem({...newItem, duration: parseInt(e.target.value)})}
-                              />
-                              <span className="text-xs text-stone-500 font-bold uppercase">min</span>
+                      <div className="space-y-5">
+                          {/* Zone Selection */}
+                          <div className="space-y-2">
+                              <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Zone / Area</label>
+                              {isAddingZone ? (
+                                  <div className="flex gap-2 animate-in slide-in-from-left-2 duration-200">
+                                      <input 
+                                          className="flex-1 bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all font-medium"
+                                          placeholder="Name of new area..."
+                                          value={newZoneName}
+                                          onChange={e => setNewZoneName(e.target.value)}
+                                          autoFocus
+                                      />
+                                      <button onClick={handleCreateZone} className="px-4 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-bold shadow-sm transition-colors">Save</button>
+                                      <button onClick={() => setIsAddingZone(false)} className="px-3 text-stone-400 hover:text-stone-600 bg-stone-50 rounded-xl border border-stone-200"><X className="w-4 h-4" /></button>
+                                  </div>
+                              ) : (
+                                  <div className="flex gap-2">
+                                      <select 
+                                          className="flex-1 bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none font-medium appearance-none cursor-pointer hover:bg-stone-100 transition-colors"
+                                          value={newItem.zone || ""} 
+                                          onChange={e => setNewItem({...newItem, zone: e.target.value})}
+                                      >
+                                          <option value="" disabled>Select Area</option>
+                                          {availableZones.map(z => <option key={z} value={z}>{z}</option>)}
+                                      </select>
+                                      <button onClick={() => setIsAddingZone(true)} className="px-4 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-xl border border-stone-200 transition-colors" title="Add New Area">
+                                          <Plus className="w-5 h-5" />
+                                      </button>
+                                  </div>
+                              )}
                           </div>
-                          
-                          <select 
-                              className="bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 text-sm focus:border-emerald-400 outline-none font-medium"
-                              value={newItem.priority}
-                              onChange={e => setNewItem({...newItem, priority: parseInt(e.target.value) as Priority})}
-                          >
-                              <option value={1}>High Priority</option>
-                              <option value={2}>Medium Priority</option>
-                              <option value={3}>Low Priority</option>
-                          </select>
-                      </div>
 
-                      <div className="flex items-center gap-3 mt-2 py-2 px-1">
-                          <label className="flex items-center gap-2 text-sm text-stone-700 cursor-pointer select-none hover:text-emerald-600 transition-colors font-bold">
-                              <input type="checkbox" 
-                                  checked={newItem.recurrence > 0} 
-                                  onChange={e => setNewItem({...newItem, recurrence: e.target.checked ? 1 : 0})}
-                                  className="w-5 h-5 rounded border-stone-300 text-emerald-500 focus:ring-emerald-400"
+                          {/* Task Label */}
+                          <div className="space-y-2">
+                              <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Task Name</label>
+                              <input 
+                                  className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all placeholder:text-stone-400 font-medium"
+                                  placeholder="e.g. Wipe Kitchen Counters"
+                                  value={newItem.label}
+                                  onChange={e => setNewItem({...newItem, label: e.target.value})}
                               />
-                              Repeat Task?
-                          </label>
-                          {newItem.recurrence > 0 && (
-                              <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5 animate-enter">
-                                   <span className="text-xs text-emerald-600 font-bold">Every</span>
-                                   <input 
-                                      type="number" 
-                                      min="1"
-                                      className="w-12 bg-white border border-emerald-200 rounded text-emerald-700 text-sm outline-none text-center font-bold py-1"
-                                      value={newItem.recurrence}
-                                      onChange={e => setNewItem({...newItem, recurrence: parseInt(e.target.value) || 1})}
-                                   />
-                                   <span className="text-xs text-emerald-600 font-bold">days</span>
+                          </div>
+
+                          {/* Grid for Duration & Priority */}
+                          <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                  <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Est. Time</label>
+                                  <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl p-3 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100 transition-all">
+                                      <input 
+                                          type="number" 
+                                          className="bg-transparent text-stone-900 text-sm w-full outline-none font-bold"
+                                          placeholder="10"
+                                          value={newItem.duration}
+                                          onChange={e => setNewItem({...newItem, duration: parseInt(e.target.value) || 0})}
+                                      />
+                                      <span className="text-xs text-stone-500 font-bold uppercase">min</span>
+                                  </div>
                               </div>
-                          )}
+                              
+                              <div className="space-y-2">
+                                  <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Priority</label>
+                                  <select 
+                                      className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none font-medium cursor-pointer"
+                                      value={newItem.priority}
+                                      onChange={e => setNewItem({...newItem, priority: parseInt(e.target.value) as Priority})}
+                                  >
+                                      <option value={1}>High (Urgent)</option>
+                                      <option value={2}>Medium (Normal)</option>
+                                      <option value={3}>Low (Casual)</option>
+                                  </select>
+                              </div>
+                          </div>
+
+                          {/* Recurrence */}
+                          <div className="bg-stone-50 border border-stone-100 rounded-xl p-3 flex items-center justify-between">
+                              <label className="flex items-center gap-2 text-sm text-stone-700 cursor-pointer select-none font-bold">
+                                  <input type="checkbox" 
+                                      checked={newItem.recurrence > 0} 
+                                      onChange={e => setNewItem({...newItem, recurrence: e.target.checked ? 1 : 0})}
+                                      className="w-5 h-5 rounded border-stone-300 text-emerald-500 focus:ring-emerald-500"
+                                  />
+                                  Repeat Task?
+                              </label>
+                              
+                              {newItem.recurrence > 0 && (
+                                  <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-300">
+                                       <span className="text-xs text-stone-500 font-bold">Every</span>
+                                       <input 
+                                          type="number" 
+                                          min="1"
+                                          className="w-16 bg-white border border-stone-200 rounded-lg text-stone-900 text-sm outline-none text-center font-bold py-1 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all"
+                                          value={newItem.recurrence}
+                                          onChange={e => setNewItem({...newItem, recurrence: parseInt(e.target.value) || 1})}
+                                       />
+                                       <span className="text-xs text-stone-500 font-bold">days</span>
+                                  </div>
+                              )}
+                          </div>
                       </div>
 
-                      <button onClick={handleSave} className="w-full py-4 text-base rounded-xl font-bold text-white bg-teal-600 hover:bg-teal-700 shadow-lg shadow-teal-200 transition-all active:scale-95">{editingId ? "Update Task" : "Create Task"}</button>
+                      <div className="pt-2 flex gap-3">
+                          <button onClick={() => setIsAdding(false)} className="flex-1 py-3 text-stone-600 font-bold bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors">
+                              Cancel
+                          </button>
+                          <button onClick={handleSave} className="flex-[2] py-3 text-white font-bold bg-teal-600 hover:bg-teal-700 shadow-lg shadow-teal-200 rounded-xl transition-all active:scale-95">
+                              {editingId ? "Update Task" : "Create Task"}
+                          </button>
+                      </div>
                   </div>
-              ) : (
-                  <button onClick={() => setIsAdding(true)} className="w-full py-5 text-base rounded-[1.5rem] font-bold text-white bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 shadow-xl shadow-emerald-200 hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-2">
-                      <Plus className="w-6 h-6" /> Add New Task
-                  </button>
-              )}
-          </div>
+              </div>
+          )}
+
+          {/* DELETE CONFIRMATION MODAL */}
+          {deletingId && (
+              <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                  <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-8 space-y-6 animate-in zoom-in-95 duration-200 text-center border border-stone-100">
+                      <div className="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-2">
+                          <AlertTriangle className="w-8 h-8 text-red-500" />
+                      </div>
+                      <div>
+                          <h3 className="text-xl font-bold text-stone-900">Delete this task?</h3>
+                          <p className="text-stone-500 mt-2 text-sm leading-relaxed">
+                              Are you sure you want to remove this task? This action cannot be undone.
+                          </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 pt-2">
+                          <button 
+                              onClick={() => setDeletingId(null)}
+                              className="py-3 px-4 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-xl font-bold transition-colors"
+                          >
+                              Cancel
+                          </button>
+                          <button 
+                              onClick={confirmDelete}
+                              className="py-3 px-4 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-red-100 transition-all active:scale-95"
+                          >
+                              Delete
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          )}
       </div>
   );
 };
