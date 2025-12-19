@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Task, Priority, Status } from '../types';
 import { ArrowLeft, Trash, Plus, Repeat, Edit, Check, X, AlertTriangle } from 'lucide-react';
 
@@ -79,14 +79,13 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           setEditingId(null);
       } else {
           const id = Math.random().toString(36).substr(2, 9);
+          // Removed user_id and created_at to match Task type and fix TS error
           const taskToAdd: Task = {
               ...newItem,
               id,
               status: 'pending',
               dependency: null,
-              lastCompleted: null,
-              user_id: '', // Note: In real app, user_id comes from auth context or backend
-              created_at: new Date().toISOString()
+              lastCompleted: null
           };
           onAddTask(taskToAdd);
       }
