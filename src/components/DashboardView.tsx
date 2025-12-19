@@ -139,7 +139,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
         </div>
 
-        {/* Zone List */}
+        {/* Zone Lst */}
         <div className="space-y-6">
             <div className="flex justify-between items-end px-2">
                 <h3 className="font-serif text-stone-800 text-2xl">Your Spaces</h3>
