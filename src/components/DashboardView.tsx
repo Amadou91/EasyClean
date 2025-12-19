@@ -107,35 +107,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Execution Panel */}
-        <div className="card-panel p-8 rounded-3xl bg-white/90 border-teal-100">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
-                <div className="flex-1">
-                    <label className="text-xs text-stone-600 uppercase font-bold mb-4 flex items-center gap-2 tracking-widest">
-                        <Clock className="w-4 h-4 text-teal-600" /> How much time do you have?
-                    </label>
-                    {/* Added py-2 and px-1 to allow room for the scale-105 effect to avoid clipping */}
-                    <div className="flex gap-3 overflow-x-auto py-2 px-1 -mx-1 no-scrollbar">
-                        {[15, 30, 45, 60, 9999].map((val) => (
-                            <button
-                                key={val}
-                                onClick={() => setSelectedTime(val)}
-                                className={`py-2 px-6 rounded-full text-sm font-bold transition-all whitespace-nowrap transform duration-200 shadow-sm ${
-                                    getTimeColor(val, selectedTime === val)
-                                } ${selectedTime === val ? 'scale-105' : 'hover:scale-105'}`}
-                            >
-                                {val === 9999 ? 'All' : `${val}m`}
-                            </button>
-                        ))}
-                    </div>
+        <div className="card-panel p-8 rounded-3xl bg-white/90 border-teal-100 space-y-6">
+            <div>
+                <label className="text-xs text-stone-600 uppercase font-bold mb-4 flex items-center gap-2 tracking-widest">
+                    <Clock className="w-4 h-4 text-teal-600" /> How much time do you have?
+                </label>
+                <div className="flex flex-wrap gap-3 py-2">
+                    {[15, 30, 45, 60, 9999].map((val) => (
+                        <button
+                            key={val}
+                            onClick={() => setSelectedTime(val)}
+                            className={`py-2 px-5 sm:px-6 rounded-full text-sm font-bold transition-all whitespace-nowrap transform duration-200 shadow-sm ${
+                                getTimeColor(val, selectedTime === val)
+                            } ${selectedTime === val ? 'scale-105' : 'hover:scale-105'}`}
+                        >
+                            {val === 9999 ? 'All' : `${val}m`}
+                        </button>
+                    ))}
                 </div>
-                <div className="md:w-auto w-full">
-                    <button 
-                        onClick={() => onSwitchView('execute')} 
-                        className="w-full md:w-auto px-10 py-4 text-base rounded-full font-bold flex items-center gap-2 justify-center transition-all active:scale-95 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white shadow-lg shadow-emerald-100 hover:shadow-emerald-200"
-                    >
-                        <Zap className="w-5 h-5 fill-current" /> Start Cleaning!
-                    </button>
-                </div>
+            </div>
+            <div className="pt-2 border-t border-emerald-50 flex justify-end">
+                <button
+                    onClick={() => onSwitchView('execute')}
+                    className="w-full sm:w-auto px-10 py-4 text-base rounded-full font-bold flex items-center gap-2 justify-center transition-all active:scale-95 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white shadow-lg shadow-emerald-100 hover:shadow-emerald-200"
+                >
+                    <Zap className="w-5 h-5 fill-current" /> Start Cleaning!
+                </button>
             </div>
         </div>
 
