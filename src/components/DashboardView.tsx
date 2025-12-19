@@ -79,6 +79,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const operationalPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 100;
   const zones = [...new Set(inventory.map(t => t.zone))];
 
+  // Helper to determine button color based on duration
+  const getTimeColor = (val: number, isSelected: boolean) => {
+      if (isSelected) {
+          if (val <= 15) return 'bg-emerald-500 text-white shadow-emerald-200';
+          if (val <= 30) return 'bg-teal-600 text-white shadow-teal-200';
+          if (val <= 45) return 'bg-amber-500 text-white shadow-amber-200';
+          if (val <= 60) return 'bg-orange-500 text-white shadow-orange-200';
+          return 'bg-rose-500 text-white shadow-rose-200'; // For 'All' or > 60
+      }
+      // Default / Unselected state
+      return 'bg-white text-stone-600 border border-stone-200 hover:border-teal-300 hover:text-teal-700';
+  };
+
   return (
     <div className="h-full overflow-y-auto space-y-8 animate-in fade-in pb-10 pr-2">
         {/* Status Card */}
@@ -106,10 +119,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                 key={val}
                                 onClick={() => setSelectedTime(val)}
                                 className={`py-2 px-6 rounded-full text-sm font-bold transition-all whitespace-nowrap transform duration-200 shadow-sm ${
-                                    selectedTime === val 
-                                    ? 'bg-teal-600 text-white shadow-teal-200 scale-105' 
-                                    : 'bg-white text-stone-600 border border-stone-200 hover:border-teal-300 hover:text-teal-700'
-                                }`}
+                                    getTimeColor(val, selectedTime === val)
+                                } ${selectedTime === val ? 'scale-105' : ''}`}
                             >
                                 {val === 9999 ? 'All' : `${val}m`}
                             </button>
@@ -127,7 +138,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
         </div>
 
-        {/* Zone Listt */}
+        {/* Zone List */}
         <div className="space-y-6">
             <div className="flex justify-between items-end px-2">
                 <h3 className="font-serif text-stone-800 text-2xl">Your Spaces</h3>
