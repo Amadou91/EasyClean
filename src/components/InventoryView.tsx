@@ -40,6 +40,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingRecurrenceId, setEditingRecurrenceId] = useState<string | null>(null);
   const [tempRecurrence, setTempRecurrence] = useState<number>(0);
+
+  const lastZoneSelectionRef = useRef<number>(0);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -204,16 +206,20 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                   All
               </button>
               {availableZones.map(z => (
-                  <button 
+                  <button
                       key={z}
-                      onClick={() => setFilterZone(z)}
+                      onClick={() => {
+                          setFilterZone(z);
+                          lastZoneSelectionRef.current = Date.now();
+                      }}
                       className={`group flex items-center gap-2 px-5 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${filterZone === z ? 'bg-teal-500 text-white shadow-md shadow-teal-200 scale-105 pr-3' : 'bg-white text-stone-600 border border-stone-200 hover:border-teal-300'}`}
                   >
                       {z}
                       {filterZone === z && (
-                        <span 
+                        <span
                           onClick={(e) => {
                              e.stopPropagation();
+                             if (Date.now() - lastZoneSelectionRef.current < 300) return;
                              onDeleteZone(z);
                              setFilterZone('All');
                           }}
