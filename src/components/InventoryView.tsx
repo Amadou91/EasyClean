@@ -36,6 +36,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const [filterZone, setFilterZone] = useState(initialFilter || 'All');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingRecurrenceId, setEditingRecurrenceId] = useState<string | null>(null); // New state for editing recurrence
+  const [tempRecurrence, setTempRecurrence] = useState<number>(0);
   
   const defaultZone = availableZones.length > 0 ? availableZones[0] : '';
   const startZone = (initialFilter && initialFilter !== 'All') ? initialFilter : defaultZone;
@@ -127,6 +129,16 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       }
   };
 
+  const startEditingRecurrence = (task: Task) => {
+      setEditingRecurrenceId(task.id);
+      setTempRecurrence(task.recurrence);
+  };
+
+  const saveRecurrence = (id: string) => {
+      setInventory(prev => prev.map(t => t.id === id ? { ...t, recurrence: tempRecurrence } : t));
+      setEditingRecurrenceId(null);
+  };
+
   return (
       <div className="flex flex-col h-full animate-in fade-in relative">
           <div className="flex justify-between items-center mb-6 px-1">
@@ -193,9 +205,32 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                   <span className="text-stone-500 bg-stone-100 px-2 py-0.5 rounded">{task.zone}</span>
                                   <PriorityBadge priority={task.priority || 2} />
                                   {task.recurrence > 0 && (
-                                      <div className="text-teal-600 flex items-center gap-0.5 bg-teal-50 px-2 py-0.5 rounded border border-teal-100" title={`Repeats every ${task.recurrence} days`}>
-                                          <Repeat className="w-3 h-3" />
-                                          {task.recurrence}d
+                                      <div className="group/recurrence relative text-teal-600 flex items-center gap-0.5 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 hover:bg-teal-100 transition-colors" title={`Repeats every ${task.recurrence} days`}>
+                                          {editingRecurrenceId === task.id ? (
+                                              <div className="flex items-center gap-1">
+                                                  <input 
+                                                      type="number" 
+                                                      className="w-8 text-center bg-white border border-teal-300 rounded text-xs p-0 h-4"
+                                                      value={tempRecurrence}
+                                                      onChange={(e) => setTempRecurrence(parseInt(e.target.value) || 0)}
+                                                      onBlur={() => saveRecurrence(task.id)}
+                                                      onKeyDown={(e) => e.key === 'Enter' && saveRecurrence(task.id)}
+                                                      autoFocus
+                                                  />
+                                                  <span className="text-[9px]">d</span>
+                                              </div>
+                                          ) : (
+                                              <>
+                                                  <Repeat className="w-3 h-3" />
+                                                  <span onClick={() => startEditingRecurrence(task)} className="cursor-pointer border-b border-dashed border-teal-400/50 hover:border-teal-600">{task.recurrence}d</span>
+                                                  <span 
+                                                      onClick={() => startEditingRecurrence(task)}
+                                                      className="ml-1 opacity-0 group-hover/recurrence:opacity-100 cursor-pointer text-teal-500 hover:text-teal-700 transition-opacity"
+                                                  >
+                                                      <Edit className="w-3 h-3" />
+                                                  </span>
+                                              </>
+                                          )}
                                       </div>
                                   )}
                               </div>
