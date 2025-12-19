@@ -73,6 +73,15 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
     setCurrentTaskIndex(0);
   }, [inventory, timeWindow, activeZone]);
 
+  // Helper to determine duration color styles
+  const getDurationStyles = (duration: number) => {
+    if (duration <= 15) return "bg-emerald-50 text-emerald-700 border-emerald-200";
+    if (duration <= 30) return "bg-teal-50 text-teal-700 border-teal-200";
+    if (duration <= 45) return "bg-amber-50 text-amber-700 border-amber-200";
+    if (duration <= 60) return "bg-orange-50 text-orange-700 border-orange-200";
+    return "bg-rose-50 text-rose-700 border-rose-200";
+  };
+
   const handleComplete = () => {
     const task = sessionTasks[currentTaskIndex];
     if (!task) return;
@@ -115,7 +124,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
   
   if (sessionTasks.length === 0) {
        return (
-          <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-6 animate-in zoom-in-95">
+          <div className="flex flex-col items-center justify-center h-full text-center space-y-6 animate-in zoom-in-95">
               <div className="w-24 h-24 rounded-full bg-white flex items-center justify-center border border-stone-300 shadow-sm">
                    {noTasksFound ? <Clock className="w-10 h-10 text-stone-400" /> : <Check className="w-10 h-10 text-stone-400" />}
               </div>
@@ -129,14 +138,14 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                           : "No pending tasks match your criteria. Relax!"}
                   </p>
               </div>
-              <button onClick={onBack} className="px-6 py-3 bg-white hover:bg-stone-50 text-stone-700 border border-stone-300 rounded-full font-bold transition-all">Return to Dashboard</button>
+              <button onClick={onBack} className="px-6 py-3 bg-white hover:bg-stone-50 text-stone-700 border border-stone-300 rounded-full font-bold transition-all shadow-sm">Return to Dashboard</button>
           </div>
        )
   }
   
   if (!currentTask) {
       return (
-          <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-6 animate-in zoom-in-95">
+          <div className="flex flex-col items-center justify-center h-full text-center space-y-6 animate-in zoom-in-95">
               <div className="w-24 h-24 rounded-full bg-emerald-50 flex items-center justify-center border border-emerald-200 shadow-lg animate-bounce">
                    <Check className="w-10 h-10 text-emerald-600" />
               </div>
@@ -152,23 +161,23 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
   }
 
   return (
-      <div className="flex flex-col h-full animate-in slide-in-from-right duration-300">
-          <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col h-full animate-in slide-in-from-right duration-300 overflow-hidden">
+          <div className="flex justify-between items-center mb-6 sm:mb-8 flex-shrink-0">
               <button onClick={onBack} className="text-stone-600 hover:text-stone-900 text-sm font-bold flex items-center gap-2 px-4 py-2 rounded-full hover:bg-white transition-colors">
-                  <ArrowLeft className="w-4 h-4" /> End Session
+                  <ArrowLeft className="w-4 h-4" /> End
               </button>
-              <div className="text-xs font-bold text-teal-600 uppercase tracking-widest bg-teal-50 border border-teal-200 px-4 py-2 rounded-full shadow-sm">
+              <div className="text-[10px] sm:text-xs font-bold text-teal-600 uppercase tracking-widest bg-teal-50 border border-teal-200 px-4 py-2 rounded-full shadow-sm">
                   Step {currentTaskIndex + 1} <span className="text-teal-400">/</span> {sessionTasks.length}
               </div>
           </div>
 
-          <div className="flex-1">
-              <div className="card-panel rounded-[2rem] overflow-hidden shadow-xl bg-white border-t-8 border-t-teal-500">
-                   <div className="p-10 space-y-8">
-                      <div className="flex justify-between items-start">
+          <div className="flex-1 overflow-y-auto no-scrollbar pb-6">
+              <div className="card-panel rounded-[2rem] overflow-hidden shadow-xl bg-white border-t-8 border-t-teal-500 mb-8 flex-shrink-0">
+                   <div className="p-6 sm:p-10 space-y-6 sm:y-8">
+                      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                           <div className="space-y-3">
                               <div className="flex items-center gap-3">
-                                  <span className="text-xs font-bold text-stone-500 uppercase tracking-widest border border-stone-300 px-3 py-1 rounded-full">
+                                  <span className="text-[10px] font-bold text-stone-500 uppercase tracking-widest border border-stone-300 px-3 py-1 rounded-full">
                                       {currentTask.zone}
                                   </span>
                                   <PriorityBadge priority={currentTask.priority || 2} />
@@ -178,35 +187,35 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                                       </div>
                                   )}
                               </div>
-                              <h2 className="text-4xl font-serif text-stone-900 leading-tight">
+                              <h2 className="text-2xl sm:text-4xl font-serif text-stone-900 leading-tight">
                                   {currentTask.label}
                               </h2>
                           </div>
-                          <div className="bg-teal-50 px-5 py-3 rounded-2xl text-xl font-bold text-teal-700 border border-teal-200 flex items-center gap-2 shadow-sm">
-                              <Clock className="w-6 h-6 text-teal-500" />
+                          <div className={`px-4 py-2 sm:px-5 sm:py-3 rounded-2xl text-lg sm:text-xl font-bold border flex items-center gap-2 shadow-sm ${getDurationStyles(currentTask.duration)}`}>
+                              <Clock className="w-5 h-5 sm:w-6 sm:h-6 opacity-70" />
                               {currentTask.duration}m
                           </div>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-4 pt-4">
+                      <div className="grid grid-cols-1 gap-3 sm:gap-4 pt-2">
                           <button 
                             onClick={handleComplete}
-                            className="text-lg py-5 w-full rounded-xl font-bold text-white bg-emerald-500 hover:bg-emerald-600 shadow-xl shadow-emerald-200 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-2"
+                            className="text-base sm:text-lg py-4 sm:py-5 w-full rounded-xl font-bold text-white bg-emerald-500 hover:bg-emerald-600 shadow-xl shadow-emerald-200 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-2"
                           >
-                              <Check className="w-6 h-6" /> Mark Complete
+                              <Check className="w-5 h-5 sm:w-6 sm:h-6" /> Mark Complete
                           </button>
                           
                           {activeZone ? (
-                              <button onClick={handleSkip} className="w-full py-4 text-stone-600 bg-white hover:bg-stone-50 border border-stone-200 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
+                              <button onClick={handleSkip} className="w-full py-3 sm:py-4 text-stone-600 bg-white hover:bg-stone-50 border border-stone-200 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
                                   <SkipForward className="w-4 h-4" /> Skip Task
                               </button>
                           ) : (
-                              <div className="grid grid-cols-2 gap-4">
-                                  <button onClick={handleSwap} className="py-4 text-stone-600 bg-white hover:bg-stone-50 border border-stone-200 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
-                                      <RotateCw className="w-4 h-4" /> Swap Task
+                              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                                  <button onClick={handleSwap} className="py-3 sm:py-4 text-stone-600 bg-white hover:bg-stone-50 border border-stone-200 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
+                                      <RotateCw className="w-4 h-4" /> Swap
                                   </button>
-                                  <button onClick={handleSkip} className="py-4 text-stone-600 bg-white hover:bg-stone-50 border border-stone-200 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
-                                      <SkipForward className="w-4 h-4" /> Skip Task
+                                  <button onClick={handleSkip} className="py-3 sm:py-4 text-stone-600 bg-white hover:bg-stone-50 border border-stone-200 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
+                                      <SkipForward className="w-4 h-4" /> Skip
                                   </button>
                               </div>
                           )}
@@ -214,16 +223,18 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                    </div>
               </div>
 
-              <div className="mt-10">
-                  <h4 className="text-xs font-bold text-stone-500 uppercase tracking-widest mb-4 ml-2">Up Next</h4>
-                  <div className="space-y-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+              <div>
+                  <h4 className="text-[10px] font-bold text-stone-500 uppercase tracking-widest mb-4 ml-2">Up Next</h4>
+                  <div className="space-y-3">
                       {sessionTasks.slice(currentTaskIndex + 1).map((t) => (
-                          <div key={t.id} className="flex justify-between items-center p-5 rounded-2xl bg-white border border-stone-200 shadow-sm text-sm text-stone-700 hover:border-teal-300 transition-colors">
+                          <div key={t.id} className="flex justify-between items-center p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 shadow-sm text-sm text-stone-700 hover:border-teal-300 transition-colors">
                               <span className="truncate flex-1 font-medium">{t.label}</span>
                               <div className="flex items-center gap-3">
                                   {t.recurrence > 0 && <RotateCw className="w-3 h-3 text-teal-400" />}
                                   <PriorityBadge priority={t.priority || 2} />
-                                  <span className="font-mono text-xs text-stone-500 w-8 text-right">{t.duration}m</span>
+                                  <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded border w-12 text-center ${getDurationStyles(t.duration)}`}>
+                                      {t.duration}m
+                                  </span>
                               </div>
                           </div>
                       ))}

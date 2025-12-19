@@ -28,7 +28,6 @@ export default function App() {
     importData
   } = useInventory();
 
-  // 1. Loading State
   if (loading) {
       return (
           <div className="min-h-screen bg-stone-50 flex items-center justify-center">
@@ -37,25 +36,24 @@ export default function App() {
       );
   }
 
-  // 2. Auth State - Show Login if no user
   if (!user) {
       return <LoginView />;
   }
 
-  // 3. Main App (Authenticated)
   const handleLogout = async () => {
       await supabase.auth.signOut();
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center p-4 sm:p-6 lg:p-8 bg-gradient-to-br from-stone-50 to-emerald-50/30">
-      <div className="w-full max-w-4xl flex flex-col h-[90vh] sm:h-[800px]">
+    /* Use h-[100dvh] and overflow-hidden to lock the app to the viewport for PWA */
+    <div className="h-[100dvh] w-screen flex flex-col items-center p-4 sm:p-6 bg-gradient-to-br from-stone-50 to-emerald-50/30 overflow-hidden">
+      <div className="w-full max-w-4xl flex flex-col h-full overflow-hidden">
         
-        <div className="flex justify-between items-center mb-8 pb-4 border-b border-emerald-100/50">
+        <div className="flex justify-between items-center mb-4 sm:mb-8 pb-4 border-b border-emerald-100/50 flex-shrink-0">
             <div>
-                <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500 flex items-center gap-3 tracking-tight font-serif cursor-pointer" onClick={() => setView('dashboard')}>
-                    <span className="bg-gradient-to-br from-emerald-500 to-teal-500 text-white p-2 rounded-xl shadow-lg shadow-emerald-200">
-                        <Home className="w-6 h-6" />
+                <h1 className="text-2xl sm:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500 flex items-center gap-3 tracking-tight font-serif cursor-pointer" onClick={() => setView('dashboard')}>
+                    <span className="bg-gradient-to-br from-emerald-500 to-teal-500 text-white p-1.5 sm:p-2 rounded-xl shadow-lg shadow-emerald-200">
+                        <Home className="w-5 h-5 sm:w-6 sm:h-6" />
                     </span>
                     EasyClean
                 </h1>
@@ -70,6 +68,7 @@ export default function App() {
             </div>
         </div>
 
+        {/* This container manages the internal scrolling for each view */}
         <div className="flex-1 overflow-hidden relative">
           {view === 'dashboard' && (
             <DashboardView 
