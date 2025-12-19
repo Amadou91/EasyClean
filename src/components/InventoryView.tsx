@@ -92,8 +92,9 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               id,
               status: 'pending',
               dependency: newItem.dependency || null,
-              lastCompleted: null
-          };
+              lastCompleted: null,
+              created_at: new Date().toISOString()
+          } as Task;
           onAddTask(taskToAdd);
       }
       

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Task } from '../types';
-import { Clock, Check, Play, Edit, Zap } from 'lucide-react';
+import { Clock, Check, Play, Edit, Zap, Repeat } from 'lucide-react';
 
 interface DashboardViewProps {
   inventory: Task[];
@@ -24,7 +24,9 @@ const Countdown = () => {
     return (
         <div className="flex flex-col items-end">
             <span className="text-4xl font-serif text-teal-900">{diffDays}</span>
-            <span className="text-[10px] uppercase tracking-widest text-stone-500 font-bold">Days Left</span>
+            <span className="text-[10px] uppercase tracking-widest text-stone-500 font-bold flex items-center gap-1">
+                <Repeat className="w-3 h-3 text-teal-600" /> Days Left
+            </span>
         </div>
     );
 };
