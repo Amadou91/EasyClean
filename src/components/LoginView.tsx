@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Shield, User, Mail, Lock } from 'lucide-react';
-import { browserLocalPersistence, browserSessionPersistence } from '@supabase/supabase-js';
 
 export const LoginView = () => {
     const [isSignUp, setIsSignUp] = useState(false);
@@ -9,7 +8,6 @@ export const LoginView = () => {
     // Form States
     const [identifier, setIdentifier] = useState(''); // Email or Username for Login
     const [password, setPassword] = useState('');
-    const [rememberMe, setRememberMe] = useState(true);
     
     // Sign Up specific states
     const [newEmail, setNewEmail] = useState('');
@@ -26,11 +24,6 @@ export const LoginView = () => {
         setSuccessMsg(null);
 
         try {
-            // Set persistence based on checkbox
-            await supabase.auth.setPersistence(
-                rememberMe ? browserLocalPersistence : browserSessionPersistence
-            );
-
             let loginEmail = identifier.trim();
 
             // 1. If identifier is NOT an email, look up the email via username
@@ -59,7 +52,7 @@ export const LoginView = () => {
 
         } catch (err: unknown) {
             if (err instanceof Error) {
-                // Handle "Email not confirmed" specifically if possible
+                // Handle "Email not confirmed" specifically if possible, though Supabase returns generic "Invalid login credentials" often for safety
                 if (err.message.includes("Email not confirmed")) {
                      setError("Please confirm your email address before logging in.");
                 } else {
@@ -80,6 +73,8 @@ export const LoginView = () => {
         setSuccessMsg(null);
 
         // Create User
+        // We pass the username in "options.data" so the Postgres Trigger can save it to the profile
+        // We also explicitly set the Redirect URL to your production domain
         const { error } = await supabase.auth.signUp({
             email: newEmail,
             password,
@@ -195,20 +190,6 @@ export const LoginView = () => {
                                 />
                             </div>
                         </div>
-                        
-                        <div className="flex items-center gap-2">
-                            <input 
-                                type="checkbox" 
-                                id="rememberMe"
-                                checked={rememberMe}
-                                onChange={(e) => setRememberMe(e.target.checked)}
-                                className="w-4 h-4 text-teal-600 border-stone-300 rounded focus:ring-teal-500"
-                            />
-                            <label htmlFor="rememberMe" className="text-sm text-stone-600 cursor-pointer">
-                                Remember me
-                            </label>
-                        </div>
-
                         {error && <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg text-center">{error}</div>}
                         <button type="submit" disabled={loading} className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-teal-100 transition-all active:scale-95 disabled:opacity-50">
                             {loading ? 'Signing in...' : 'Sign In'}
