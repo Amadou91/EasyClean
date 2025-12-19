@@ -77,7 +77,11 @@ export default function App() {
               onFilterZone={(z) => { setFilterZone(z); setView('inventory'); }}
               selectedTime={selectedTime}
               setSelectedTime={setSelectedTime}
-              onTackleArea={(zone) => { setActiveZone(zone); setView('execute'); }}
+              onTackleArea={(zone) => {
+                setSelectedTime(9999);
+                setActiveZone(zone);
+                setView('execute');
+              }}
             />
           )}
           {view === 'execute' && (
