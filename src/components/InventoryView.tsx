@@ -67,14 +67,13 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           setEditingId(null);
       } else {
           const id = Math.random().toString(36).substr(2, 9);
-          const newTask: Task = {
+          setInventory(prev => [...prev, {
               ...newItem,
               id,
               status: 'pending',
               dependency: null,
               lastCompleted: null
-          };
-          onAddTask(newTask);
+          }]);
       }
       
       setIsAdding(false);
@@ -109,6 +108,12 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           priority: 2,
           recurrence: 0
       });
+  };
+
+  const handleDelete = (id: string) => {
+      if (window.confirm("Are you sure you want to delete this task?")) {
+          setInventory(prev => prev.filter(t => t.id !== id));
+      }
   };
 
   const handleToggleStatus = (id: string, currentStatus: string) => {
