@@ -133,7 +133,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         onClick={() => onSwitchView('execute')} 
                         className="w-full md:w-auto px-10 py-4 text-base rounded-full font-bold flex items-center gap-2 justify-center transition-all active:scale-95 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white shadow-lg shadow-emerald-100 hover:shadow-emerald-200"
                     >
-                        <Zap className="w-5 h-5 fill-current" /> Start Session
+                        <Zap className="w-5 h-5 fill-current" /> Start Cleaning!
                     </button>
                 </div>
             </div>
