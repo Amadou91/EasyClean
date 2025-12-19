@@ -278,7 +278,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                                 <>
                                                     <Repeat className="w-3 h-3" />
                                                     <span className="border-b border-dashed border-teal-400/50">{task.recurrence}d</span>
-                                                    <Edit className="w-3 h-3 opacity-50 group-hover/recurrence:opacity-100 transition-opacity text-teal-600" />
                                                 </>
                                             )}
                                         </div>
