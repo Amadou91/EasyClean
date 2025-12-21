@@ -204,33 +204,33 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       <div className="flex flex-col min-h-full animate-in fade-in relative">
           <div className="flex justify-between items-center mb-6 px-1">
               <div className="flex items-center gap-4">
-                <button onClick={onBack} className="text-stone-600 hover:text-stone-900 text-sm font-bold flex items-center gap-2 px-4 py-2 rounded-full hover:bg-white transition-colors">
+                <button onClick={onBack} className="text-stone-700 hover:text-stone-900 text-sm font-bold flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-[color:var(--border)] hover:bg-white transition-colors shadow-sm">
                     <ArrowLeft className="w-4 h-4" /> Back
                 </button>
                 <h2 className="text-xl font-serif text-stone-900">Task Management</h2>
               </div>
-              
+
               <div className="flex items-center gap-2">
-                  <button onClick={onExport} className="text-stone-400 hover:text-teal-600 transition-colors p-2 hover:bg-white rounded-xl" title="Export Tasks">
+                  <button onClick={onExport} className="text-stone-500 hover:text-emerald-700 transition-colors p-2 hover:bg-white rounded-xl border border-transparent hover:border-[color:var(--border)]" title="Export Tasks">
                       <Download className="w-5 h-5" />
                   </button>
-                  <button onClick={handleImportClick} className="text-stone-400 hover:text-teal-600 transition-colors p-2 hover:bg-white rounded-xl" title="Import Tasks">
+                  <button onClick={handleImportClick} className="text-stone-500 hover:text-emerald-700 transition-colors p-2 hover:bg-white rounded-xl border border-transparent hover:border-[color:var(--border)]" title="Import Tasks">
                       <Upload className="w-5 h-5" />
                   </button>
-                  <input 
-                      type="file" 
-                      ref={fileInputRef} 
-                      onChange={handleFileChange} 
-                      className="hidden" 
-                      accept=".json" 
+                  <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      className="hidden"
+                      accept=".json"
                   />
               </div>
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-4 mb-2 no-scrollbar px-1">
-              <button 
+              <button
                   onClick={() => setFilterZone('All')}
-                  className={`px-5 py-2 rounded-full text-xs font-bold transition-all ${filterZone === 'All' ? 'bg-teal-500 text-white shadow-md shadow-teal-200 scale-105' : 'bg-white text-stone-600 border border-stone-200 hover:border-teal-300'}`}
+                  className={`px-5 py-2 rounded-full text-xs font-bold transition-all ${filterZone === 'All' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200 scale-105' : 'bg-white text-stone-700 border border-[color:var(--border)] hover:border-emerald-300'}`}
               >
                   All
               </button>
@@ -241,7 +241,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                           setFilterZone(z);
                           lastZoneSelectionRef.current = Date.now();
                       }}
-                      className={`group flex items-center gap-2 px-5 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${filterZone === z ? 'bg-teal-500 text-white shadow-md shadow-teal-200 scale-105 pr-3' : 'bg-white text-stone-600 border border-stone-200 hover:border-teal-300'}`}
+                      className={`group flex items-center gap-2 px-5 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${filterZone === z ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200 scale-105 pr-3' : 'bg-white text-stone-700 border border-[color:var(--border)] hover:border-emerald-300'}`}
                   >
                       {z}
                       {filterZone === z && (
@@ -252,7 +252,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                              onDeleteZone(z);
                              setFilterZone('All');
                           }}
-                          className="ml-1 p-1 bg-teal-600 rounded-full hover:bg-red-500 transition-colors cursor-pointer"
+                          className="ml-1 p-1 bg-emerald-600 rounded-full hover:bg-red-500 transition-colors cursor-pointer"
                           title={`Delete ${z}`}
                         >
                             <X className="w-3 h-3 text-white" />
@@ -264,31 +264,31 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
 
           <div className="scroll-panels space-y-3 pb-24 pt-4">
               {displayedInventory.length === 0 ? (
-                  <div className="text-center py-12 text-stone-500 text-sm bg-white/50 rounded-2xl border border-dashed border-stone-300 mt-4">
+                  <div className="text-center py-12 text-stone-500 text-sm bg-white/70 rounded-2xl border border-dashed border-[color:var(--border)] mt-4">
                       No items found in this filter.
                   </div>
               ) : displayedInventory.map(task => {
                   const dependencyTask = task.dependency ? inventory.find(t => t.id === task.dependency) : null;
                   return (
-                    <div key={task.id} className={`card-panel p-4 rounded-2xl flex justify-between items-center group transition-all card-hover ${task.status === 'completed' ? 'opacity-60 bg-white/60' : 'bg-white'}`}>
+                    <div key={task.id} className={`card-panel p-4 rounded-2xl flex justify-between items-center group transition-all card-hover ${task.status === 'completed' ? 'opacity-75 bg-white/70' : 'bg-white/95'}`}>
                         <div className="flex items-start gap-4 flex-1">
-                            <div 
+                            <div
                                 onClick={() => handleToggleStatus(task.id, task.status)}
-                                className={`mt-0.5 w-6 h-6 rounded-lg border-2 cursor-pointer flex items-center justify-center transition-all ${task.status === 'completed' ? 'bg-emerald-500 border-emerald-500 text-white scale-110' : 'border-stone-300 hover:border-teal-400 bg-white'}`}
+                                className={`mt-0.5 w-6 h-6 rounded-lg border-2 cursor-pointer flex items-center justify-center transition-all ${task.status === 'completed' ? 'bg-emerald-600 border-emerald-600 text-white scale-110' : 'border-[color:var(--border)] hover:border-emerald-400 bg-white'}`}
                             >
                                 {task.status === 'completed' && <Check className="w-4 h-4" />}
                             </div>
 
                             <div className="flex-1">
-                                <div className={`font-bold text-sm text-stone-800 mb-1 ${task.status === 'completed' ? 'line-through text-stone-500' : ''}`}>
+                                <div className={`font-bold text-sm text-stone-900 mb-1 ${task.status === 'completed' ? 'line-through text-stone-500' : ''}`}>
                                     {task.label}
                                 </div>
                                 <div className="flex flex-wrap gap-2 text-[10px] font-bold uppercase items-center">
-                                    <span className="text-stone-500 bg-stone-100 px-2 py-0.5 rounded">{task.zone}</span>
+                                    <span className="text-stone-600 bg-[color:var(--surface-muted)] px-2 py-0.5 rounded border border-[color:var(--border)]">{task.zone}</span>
                                     <PriorityBadge priority={task.priority || 2} />
                                     {task.recurrence > 0 && (
-                                        <div 
-                                            className="group/recurrence relative text-teal-600 flex items-center gap-1 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 hover:bg-teal-100 transition-colors cursor-pointer" 
+                                        <div
+                                            className="group/recurrence relative text-emerald-700 flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded border border-[color:var(--border)] hover:bg-emerald-100 transition-colors cursor-pointer"
                                             title={`Repeats every ${task.recurrence} days`}
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -297,9 +297,9 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                         >
                                             {editingRecurrenceId === task.id ? (
                                                 <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                                                    <input 
-                                                        type="number" 
-                                                        className="w-8 text-center bg-white border border-teal-300 rounded text-xs p-0 h-4"
+                                                    <input
+                                                        type="number"
+                                                        className="w-8 text-center bg-white border border-emerald-300 rounded text-xs p-0 h-4"
                                                         value={tempRecurrence}
                                                         onChange={(e) => setTempRecurrence(parseInt(e.target.value) || 0)}
                                                         onBlur={() => saveRecurrence(task.id)}
@@ -312,13 +312,13 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                             ) : (
                                                 <>
                                                     <Repeat className="w-3 h-3" />
-                                                    <span className="border-b border-dashed border-teal-400/50">{task.recurrence}d</span>
+                                                    <span className="border-b border-dashed border-emerald-400/50">{task.recurrence}d</span>
                                                 </>
                                             )}
                                         </div>
                                     )}
                                     {dependencyTask && (
-                                        <div className="flex items-center gap-1 text-stone-500 bg-stone-50 px-2 py-0.5 rounded border border-stone-200 truncate max-w-[150px]" title={`Depends on: ${dependencyTask.label}`}>
+                                        <div className="flex items-center gap-1 text-stone-600 bg-[color:var(--surface-muted)] px-2 py-0.5 rounded border border-[color:var(--border)] truncate max-w-[150px]" title={`Depends on: ${dependencyTask.label}`}>
                                             <Link className="w-3 h-3" />
                                             <span className="truncate">{dependencyTask.label}</span>
                                         </div>
@@ -330,7 +330,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                             <span className={`text-xs font-mono font-bold px-2 py-1 rounded-md border ${getDurationStyles(task.duration)}`}>
                                 {task.duration}m
                             </span>
-                            <button onClick={() => handleEdit(task)} className="text-stone-500 hover:text-teal-600 transition-colors p-2 hover:bg-teal-50 rounded-full" title="Edit">
+                            <button onClick={() => handleEdit(task)} className="text-stone-500 hover:text-emerald-700 transition-colors p-2 hover:bg-emerald-50 rounded-full" title="Edit">
                                 <Edit className="w-4 h-4" />
                             </button>
                             <button onClick={() => handleDeleteClick(task.id)} className="text-stone-500 hover:text-red-600 transition-colors p-2 hover:bg-red-50 rounded-full" title="Delete">
