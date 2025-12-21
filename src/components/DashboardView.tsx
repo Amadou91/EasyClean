@@ -82,20 +82,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [viewMode, setViewMode] = useState<'rooms' | 'tasks'>('rooms');
 
   const groupedTasks = useMemo(() =>
-      zones.map(zone => ({
-          zone,
-          tasks: inventory.filter(t => t.zone === zone)
-      })).filter(group => group.tasks.length > 0)
+      zones
+          .map(zone => ({
+              zone,
+              tasks: inventory
+                  .filter(t => t.zone === zone)
+                  .sort((a, b) => {
+                      if (a.priority !== b.priority) return a.priority - b.priority;
+                      return a.duration - b.duration;
+                  })
+          }))
+          .filter(group => group.tasks.length > 0)
   , [inventory, zones]);
 
   const getPriorityStyle = (priority: number) => {
       switch (priority) {
-          case 3:
-              return 'text-rose-700 bg-rose-50 border-rose-100';
+          case 1:
+              return 'bg-rose-50 text-rose-700 border-rose-200';
           case 2:
-              return 'text-amber-700 bg-amber-50 border-amber-100';
+              return 'bg-amber-50 text-amber-700 border-amber-200';
           default:
-              return 'text-emerald-700 bg-emerald-50 border-emerald-100';
+              return 'bg-blue-50 text-blue-700 border-blue-200';
       }
   };
 
@@ -168,7 +175,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="space-y-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between px-2">
                 <div className="flex items-center gap-3 flex-wrap">
-                    <h3 className="font-serif text-stone-900 text-2xl">Your Rooms</h3>
                     <div
                         className="inline-flex items-center bg-[color:var(--surface-muted)] border border-[color:var(--border)] rounded-full p-1 shadow-inner"
                         role="group"
