@@ -29,16 +29,17 @@ const PriorityBadge = ({ priority }: { priority: number }) => {
     );
 };
 
-const palette = ['#0ea5e9', '#22c55e', '#eab308', '#a855f7', '#ef4444', '#14b8a6', '#8b5cf6', '#f59e0b'];
-
 const getZoneColor = (zone: string, alpha = 1) => {
     if (!zone) return `rgba(120, 113, 108, ${alpha})`;
-    const hash = zone.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const base = palette[hash % palette.length];
-    const r = parseInt(base.slice(1, 3), 16);
-    const g = parseInt(base.slice(3, 5), 16);
-    const b = parseInt(base.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+
+    // Generate a stable, unique-ish hue for each zone name
+    let hash = 0;
+    for (let i = 0; i < zone.length; i++) {
+        hash = (hash * 31 + zone.charCodeAt(i)) % 360;
+    }
+
+    // Use HSL to ensure vivid, distinct colors while allowing transparency control via alpha
+    return `hsla(${hash}, 70%, 50%, ${alpha})`;
 };
 
 export const InventoryView: React.FC<InventoryViewProps> = ({ 
@@ -453,12 +454,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                 <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Prerequisite (Dependency)</label>
                                 <div className="relative">
                                     <Link className="w-4 h-4 absolute left-3 top-3.5 text-stone-400" />
-                                    {newItem.dependency && (
-                                        <span
-                                            className="absolute left-9 top-3.5 w-2.5 h-2.5 rounded-full border border-white shadow-sm"
-                                            style={{ backgroundColor: getZoneColor(inventory.find(t => t.id === newItem.dependency)?.zone || '', 0.9) }}
-                                        />
-                                    )}
                                     <select
                                         className="w-full pl-10 bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none font-medium cursor-pointer appearance-none"
                                         value={newItem.dependency || ""}
