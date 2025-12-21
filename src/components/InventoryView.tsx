@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Task, Priority, Status } from '../types';
 import { ArrowLeft, Trash, Plus, Repeat, Edit, Check, X, AlertTriangle, Download, Upload, Link } from 'lucide-react';
 
@@ -71,6 +71,27 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   });
 
   const [isMobile, setIsMobile] = useState(false);
+
+  const dependencyOptions = useMemo(() => {
+      const tasksByZone: Record<string, Task[]> = {};
+
+      inventory
+          .filter(t => t.id !== editingId)
+          .forEach(task => {
+              const zone = task.zone || 'Unassigned';
+              if (!tasksByZone[zone]) {
+                  tasksByZone[zone] = [];
+              }
+              tasksByZone[zone].push(task);
+          });
+
+      return Object.entries(tasksByZone)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([zone, tasks]) => ({
+              zone,
+              tasks: [...tasks].sort((a, b) => a.label.localeCompare(b.label))
+          }));
+  }, [inventory, editingId]);
 
   // Reset form when opening/closing or changing filter
   useEffect(() => {
@@ -460,16 +481,18 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                         style={newItem.dependency ? { backgroundColor: getZoneColor(inventory.find(t => t.id === newItem.dependency)?.zone || '', 0.08) } : undefined}
                                     >
                                         <option value="">None (No prerequisites)</option>
-                                        {inventory
-                                            .filter(t => t.id !== editingId)
-                                            .map(t => (
-                                            <option
-                                                key={t.id}
-                                                value={t.id}
-                                                style={{ backgroundColor: getZoneColor(t.zone, 0.12) }}
-                                            >
-                                                {t.label} ({t.zone})
-                                            </option>
+                                        {dependencyOptions.map(({ zone, tasks }) => (
+                                            <optgroup key={zone} label={zone}>
+                                                {tasks.map(task => (
+                                                    <option
+                                                        key={task.id}
+                                                        value={task.id}
+                                                        style={{ backgroundColor: getZoneColor(task.zone, 0.12) }}
+                                                    >
+                                                        {task.label}
+                                                    </option>
+                                                ))}
+                                            </optgroup>
                                         ))}
                                     </select>
                                 </div>
