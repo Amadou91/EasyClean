@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Task } from '../types';
-import { Check, Clock, ArrowLeft, RotateCw, SkipForward } from 'lucide-react';
+import { Check, Clock, ArrowLeft, RotateCw, SkipForward, Lock } from 'lucide-react';
 
 interface ExecutionViewProps {
   inventory: Task[];
@@ -31,25 +31,27 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
   const [noTasksFound, setNoTasksFound] = useState(false);
   const [skippedTaskIds, setSkippedTaskIds] = useState<string[]>([]);
 
+  const compareTasks = (a: Task, b: Task) => {
+    const aIsBlocked = inventory.some(i => i.id === a.dependency && i.status !== 'completed');
+    const bIsBlocked = inventory.some(i => i.id === b.dependency && i.status !== 'completed');
+
+    if (aIsBlocked && !bIsBlocked) return 1;
+    if (!aIsBlocked && bIsBlocked) return -1;
+
+    if (a.priority !== b.priority) {
+      return (a.priority || 2) - (b.priority || 2);
+    }
+    return a.duration - b.duration;
+  };
+
   useEffect(() => {
     let pending = inventory.filter(t => t.status === 'pending' && !skippedTaskIds.includes(t.id));
-    
+
     if (activeZone) {
         pending = pending.filter(t => t.zone === activeZone);
     }
-    
-    const sorted = pending.sort((a, b) => {
-        const aIsBlocked = inventory.some(i => i.id === a.dependency && i.status !== 'completed');
-        const bIsBlocked = inventory.some(i => i.id === b.dependency && i.status !== 'completed');
-        
-        if (aIsBlocked && !bIsBlocked) return 1;
-        if (!aIsBlocked && bIsBlocked) return -1;
-        
-        if (a.priority !== b.priority) {
-            return (a.priority || 2) - (b.priority || 2);
-        }
-        return a.duration - b.duration; 
-    });
+
+    const sorted = pending.sort(compareTasks);
 
     let accumulatedTime = 0;
     const queue: Task[] = [];
@@ -125,6 +127,16 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
   };
 
   const currentTask = sessionTasks[currentTaskIndex];
+  const nextTasks = sessionTasks.slice(currentTaskIndex + 1);
+  const conditionalNextTasks = inventory
+    .filter(t =>
+      t.status === 'pending' &&
+      t.dependency === currentTask?.id &&
+      !skippedTaskIds.includes(t.id) &&
+      (!activeZone || t.zone === activeZone) &&
+      !sessionTasks.find(st => st.id === t.id)
+    )
+    .sort(compareTasks);
   
     if (sessionTasks.length === 0) {
          return (
@@ -230,7 +242,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                 <div>
                     <h4 className="text-[10px] font-bold text-stone-600 uppercase tracking-[0.28em] mb-4 ml-2">Up Next</h4>
                     <div className="space-y-3">
-                        {sessionTasks.slice(currentTaskIndex + 1).map((t) => (
+                        {nextTasks.map((t) => (
                             <div key={t.id} className="flex justify-between items-center p-4 sm:p-5 rounded-2xl bg-white/90 border border-[color:var(--border)] shadow-sm text-sm text-stone-800 hover:border-emerald-300 transition-colors">
                                 <span className="truncate flex-1 font-medium">{t.label}</span>
                                 <div className="flex items-center gap-3">
@@ -242,7 +254,27 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                                 </div>
                             </div>
                         ))}
-                        {sessionTasks.slice(currentTaskIndex + 1).length === 0 && (
+                        {conditionalNextTasks.map((t) => (
+                            <div key={t.id} className="p-4 sm:p-5 rounded-2xl bg-white border border-dashed border-emerald-300/80 shadow-sm text-sm text-stone-700">
+                                <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-700 mb-2 uppercase tracking-[0.18em]">
+                                    <Lock className="w-4 h-4" /> Unlocks next
+                                </div>
+                                <div className="flex justify-between items-center gap-3 opacity-80">
+                                    <div className="flex flex-col flex-1 min-w-0">
+                                        <span className="truncate font-medium">{t.label}</span>
+                                        <span className="text-[11px] text-stone-500">Becomes next after this task</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        {t.recurrence > 0 && <RotateCw className="w-3 h-3 text-emerald-400" />}
+                                        <PriorityBadge priority={t.priority || 2} />
+                                        <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded border w-12 text-center ${getDurationStyles(t.duration)}`}>
+                                            {t.duration}m
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        {nextTasks.length === 0 && conditionalNextTasks.length === 0 && (
                             <div className="text-sm text-stone-500 italic text-center py-6 bg-white/70 rounded-2xl border border-dashed border-[color:var(--border)]">No further tasks in queue.</div>
                         )}
                     </div>
