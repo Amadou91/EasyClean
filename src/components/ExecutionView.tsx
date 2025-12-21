@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Task } from '../types';
-import { Check, Clock, ArrowLeft, RotateCw, SkipForward } from 'lucide-react';
+import { Check, Clock, ArrowLeft, RotateCw, SkipForward, Info } from 'lucide-react';
 
 interface ExecutionViewProps {
   inventory: Task[];
@@ -29,6 +29,13 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
   const [sessionTasks, setSessionTasks] = useState<Task[]>([]);
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
   const [noTasksFound, setNoTasksFound] = useState(false);
+
+  const hasLockedFollowups = inventory.some(
+    (task) =>
+      task.status === 'pending' &&
+      task.dependency &&
+      inventory.some((dep) => dep.id === task.dependency && dep.status !== 'completed')
+  );
 
   useEffect(() => {
     let pending = inventory.filter(t => t.status === 'pending');
@@ -224,7 +231,16 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
               </div>
 
                 <div>
-                    <h4 className="text-[10px] font-bold text-stone-600 uppercase tracking-[0.28em] mb-4 ml-2">Up Next</h4>
+                    <div className="flex items-center justify-between mb-1 ml-2">
+                        <h4 className="text-[10px] font-bold text-stone-600 uppercase tracking-[0.28em]">Up Next</h4>
+                        {hasLockedFollowups && (
+                            <div className="flex items-center gap-1 text-[11px] text-stone-500">
+                                <Info className="w-3 h-3" />
+                                <span className="font-medium">More tasks unlock as you finish</span>
+                            </div>
+                        )}
+                    </div>
+                    <p className="text-[11px] text-stone-500 ml-2 mb-4">This list updates after each completion.</p>
                     <div className="space-y-3">
                         {sessionTasks.slice(currentTaskIndex + 1).map((t) => (
                             <div key={t.id} className="flex justify-between items-center p-4 sm:p-5 rounded-2xl bg-white/90 border border-[color:var(--border)] shadow-sm text-sm text-stone-800 hover:border-emerald-300 transition-colors">
