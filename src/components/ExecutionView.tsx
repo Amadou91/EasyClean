@@ -30,6 +30,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
   const [noTasksFound, setNoTasksFound] = useState(false);
   const [skippedTaskIds, setSkippedTaskIds] = useState<string[]>([]);
+  const [sessionCompletedIds, setSessionCompletedIds] = useState<string[]>([]);
 
   const compareTasks = (a: Task, b: Task) => {
     const aIsBlocked = inventory.some(i => i.id === a.dependency && i.status !== 'completed');
@@ -45,6 +46,13 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
   };
 
   useEffect(() => {
+    const completedDuration = sessionCompletedIds.reduce((total, id) => {
+      const task = inventory.find(t => t.id === id);
+      return task ? total + task.duration : total;
+    }, 0);
+
+    const remainingTime = Math.max(timeWindow - completedDuration, 0);
+
     let pending = inventory.filter(t => t.status === 'pending' && !skippedTaskIds.includes(t.id));
 
     if (activeZone) {
@@ -62,19 +70,19 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
              if(dep && dep.status !== 'completed') continue;
         }
 
-        if (accumulatedTime + task.duration <= timeWindow) {
+        if (accumulatedTime + task.duration <= remainingTime) {
             queue.push(task);
             accumulatedTime += task.duration;
         }
     }
-    
-    if (queue.length === 0 && pending.length > 0 && timeWindow < 9999) {
+
+    if (queue.length === 0 && pending.length > 0 && remainingTime < 9999) {
           setNoTasksFound(true);
     }
 
     setSessionTasks(queue);
     setCurrentTaskIndex(0);
-  }, [inventory, timeWindow, activeZone, skippedTaskIds]);
+  }, [inventory, timeWindow, activeZone, skippedTaskIds, sessionCompletedIds]);
 
   // Helper to determine duration color styles
   const getDurationStyles = (duration: number) => {
@@ -89,6 +97,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
     const task = sessionTasks[currentTaskIndex];
     if (!task) return;
     onUpdateTask(task.id, { status: 'completed' });
+    setSessionCompletedIds(prev => prev.includes(task.id) ? prev : [...prev, task.id]);
     setCurrentTaskIndex(prev => Math.min(prev + 1, sessionTasks.length));
   };
 
