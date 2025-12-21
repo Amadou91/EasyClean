@@ -201,7 +201,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   };
 
   return (
-      <div className="flex flex-col h-full animate-in fade-in relative">
+      <div className="flex flex-col min-h-full animate-in fade-in relative">
           <div className="flex justify-between items-center mb-6 px-1">
               <div className="flex items-center gap-4">
                 <button onClick={onBack} className="text-stone-600 hover:text-stone-900 text-sm font-bold flex items-center gap-2 px-4 py-2 rounded-full hover:bg-white transition-colors">
@@ -262,7 +262,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               ))}
           </div>
 
-          <div className="flex-1 overflow-y-auto scroll-panels space-y-3 pb-24 pt-4">
+          <div className="scroll-panels space-y-3 pb-24 pt-4">
               {displayedInventory.length === 0 ? (
                   <div className="text-center py-12 text-stone-500 text-sm bg-white/50 rounded-2xl border border-dashed border-stone-300 mt-4">
                       No items found in this filter.
