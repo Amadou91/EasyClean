@@ -11,4 +11,6 @@ export interface Task {
   dependency: string | null;
   recurrence: number; // days
   lastCompleted: number | null; // timestamp
+  completed_at?: string | null;
+  completed_by?: string | null;
 }

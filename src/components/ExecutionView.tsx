@@ -10,6 +10,9 @@ interface ExecutionViewProps {
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
 }
 
+const DEFAULT_PROCESS_DWELL_MINUTES = 45;
+const APPLIANCE_KEYWORDS = ["dishwasher", "laundry", "washer", "dryer", "washing machine"];
+
 const PriorityBadge = ({ priority }: { priority: number }) => {
     const styles: Record<number, string> = {
         1: "bg-rose-50 text-rose-700 border-rose-200",
@@ -23,6 +26,35 @@ const PriorityBadge = ({ priority }: { priority: number }) => {
     );
 };
 
+const getApplianceKeywords = (label: string) => {
+    const normalized = label.toLowerCase();
+    return APPLIANCE_KEYWORDS.filter(keyword => normalized.includes(keyword));
+};
+
+const isLoadToUnloadPair = (dependencyLabel: string, dependentLabel: string) => {
+    const depLabel = dependencyLabel.toLowerCase();
+    const childLabel = dependentLabel.toLowerCase();
+
+    if (!depLabel.includes("load") || !childLabel.includes("unload")) return false;
+
+    const depKeywords = getApplianceKeywords(dependencyLabel);
+    const childKeywords = getApplianceKeywords(dependentLabel);
+
+    if (depKeywords.length === 0 || childKeywords.length === 0) return false;
+
+    return depKeywords.some(keyword => childKeywords.includes(keyword));
+};
+
+const isDependencyInCooldown = (dependencyTask: Task, dependentTask: Task, now: number) => {
+    if (!dependencyTask.completed_at) return false;
+    if (!isLoadToUnloadPair(dependencyTask.label, dependentTask.label)) return false;
+
+    const completedTime = new Date(dependencyTask.completed_at).getTime();
+    const elapsedMinutes = (now - completedTime) / (1000 * 60);
+
+    return elapsedMinutes < DEFAULT_PROCESS_DWELL_MINUTES;
+};
+
 export const ExecutionView: React.FC<ExecutionViewProps> = ({
   inventory, onBack, timeWindow, activeZone, onUpdateTask
 }) => {
@@ -31,15 +63,25 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
   const [noTasksFound, setNoTasksFound] = useState(false);
 
   useEffect(() => {
+    const now = Date.now();
     let pending = inventory.filter(t => t.status === 'pending');
     
     if (activeZone) {
         pending = pending.filter(t => t.zone === activeZone);
     }
     
+    const isTaskBlocked = (task: Task) => {
+        if (!task.dependency) return false;
+        const dep = inventory.find(i => i.id === task.dependency);
+        if (!dep) return false;
+
+        if (dep.status !== 'completed') return true;
+        return isDependencyInCooldown(dep, task, now);
+    };
+
     const sorted = pending.sort((a, b) => {
-        const aIsBlocked = inventory.some(i => i.id === a.dependency && i.status !== 'completed');
-        const bIsBlocked = inventory.some(i => i.id === b.dependency && i.status !== 'completed');
+        const aIsBlocked = isTaskBlocked(a);
+        const bIsBlocked = isTaskBlocked(b);
         
         if (aIsBlocked && !bIsBlocked) return 1;
         if (!aIsBlocked && bIsBlocked) return -1;
@@ -54,10 +96,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
     const queue: Task[] = [];
     
     for (const task of sorted) {
-        if (task.dependency) {
-             const dep = inventory.find(i => i.id === task.dependency);
-             if(dep && dep.status !== 'completed') continue;
-        }
+        if (isTaskBlocked(task)) continue;
 
         if (accumulatedTime + task.duration <= timeWindow) {
             queue.push(task);

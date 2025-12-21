@@ -124,7 +124,7 @@ export function useInventory() {
         setInventory(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
         
         // If marking complete, add timestamp and user
-        const dbUpdates: Partial<Task> & { completed_at?: string; completed_by?: string } = { ...updates };
+        const dbUpdates: Partial<Task> & { completed_at?: string | null; completed_by?: string | null } = { ...updates };
         if (updates.status === 'completed') {
             dbUpdates.completed_at = new Date().toISOString();
             dbUpdates.completed_by = user.id; // Track who did it
