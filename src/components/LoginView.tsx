@@ -98,18 +98,18 @@ export const LoginView = () => {
     };
 
     return (
-        <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
-            <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 border border-stone-100">
+        <div className="min-h-screen bg-[radial-gradient(circle_at_10%_20%,#e9f6f1_0,#f7f9fb_35%,#eef4f6_100%)] flex items-center justify-center p-4">
+            <div className="max-w-md w-full bg-white/90 rounded-[32px] shadow-[0_28px_80px_-45px_rgba(6,95,70,0.5)] p-8 border border-[color:var(--border)] backdrop-blur-xl">
                 <div className="flex justify-center mb-6">
-                    <div className="bg-teal-50 p-4 rounded-full">
-                        <Shield className="w-8 h-8 text-teal-600" />
+                    <div className="bg-emerald-50 p-4 rounded-2xl border border-[color:var(--border)] shadow-inner">
+                        <Shield className="w-8 h-8 text-emerald-700" />
                     </div>
                 </div>
-                
-                <h1 className="text-2xl font-serif text-center text-stone-800 mb-2">
+
+                <h1 className="text-2xl font-serif text-center text-stone-900 mb-2">
                     {isSignUp ? "Create Account" : "Welcome Home"}
                 </h1>
-                <p className="text-center text-stone-500 mb-8 text-sm">
+                <p className="text-center text-stone-600 mb-8 text-sm leading-relaxed">
                     {isSignUp ? "Join the household to start cleaning." : "Please sign in to access EasyClean."}
                 </p>
 
@@ -126,9 +126,9 @@ export const LoginView = () => {
                             <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest mb-1">Email</label>
                             <div className="relative">
                                 <Mail className="w-4 h-4 absolute left-3 top-3.5 text-stone-400" />
-                                <input 
+                                <input
                                     type="email" required
-                                    className="w-full pl-10 bg-stone-50 border border-stone-200 rounded-xl p-3 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all text-sm"
+                                    className="w-full pl-10 bg-[color:var(--surface-muted)] border border-[color:var(--border)] rounded-xl p-3 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 transition-all text-sm"
                                     value={newEmail} onChange={e => setNewEmail(e.target.value)}
                                     placeholder="name@example.com"
                                 />
@@ -138,9 +138,9 @@ export const LoginView = () => {
                             <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest mb-1">Username</label>
                             <div className="relative">
                                 <User className="w-4 h-4 absolute left-3 top-3.5 text-stone-400" />
-                                <input 
+                                <input
                                     type="text" required
-                                    className="w-full pl-10 bg-stone-50 border border-stone-200 rounded-xl p-3 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all text-sm"
+                                    className="w-full pl-10 bg-[color:var(--surface-muted)] border border-[color:var(--border)] rounded-xl p-3 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 transition-all text-sm"
                                     value={newUsername} onChange={e => setNewUsername(e.target.value)}
                                     placeholder="johndoe"
                                 />
@@ -150,16 +150,16 @@ export const LoginView = () => {
                             <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest mb-1">Password</label>
                             <div className="relative">
                                 <Lock className="w-4 h-4 absolute left-3 top-3.5 text-stone-400" />
-                                <input 
+                                <input
                                     type="password" required
-                                    className="w-full pl-10 bg-stone-50 border border-stone-200 rounded-xl p-3 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all text-sm"
+                                    className="w-full pl-10 bg-[color:var(--surface-muted)] border border-[color:var(--border)] rounded-xl p-3 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 transition-all text-sm"
                                     value={password} onChange={e => setPassword(e.target.value)}
                                     placeholder="••••••••"
                                 />
                             </div>
                         </div>
                         {error && <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg text-center">{error}</div>}
-                        <button type="submit" disabled={loading} className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-teal-100 transition-all active:scale-95 disabled:opacity-50">
+                        <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-100 transition-all active:scale-95 disabled:opacity-50">
                             {loading ? 'Creating...' : 'Sign Up'}
                         </button>
                     </form>
@@ -170,9 +170,9 @@ export const LoginView = () => {
                             <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest mb-1">Email or Username</label>
                             <div className="relative">
                                 <User className="w-4 h-4 absolute left-3 top-3.5 text-stone-400" />
-                                <input 
+                                <input
                                     type="text" required
-                                    className="w-full pl-10 bg-stone-50 border border-stone-200 rounded-xl p-3 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all text-sm"
+                                    className="w-full pl-10 bg-[color:var(--surface-muted)] border border-[color:var(--border)] rounded-xl p-3 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 transition-all text-sm"
                                     value={identifier} onChange={e => setIdentifier(e.target.value)}
                                     placeholder="name@example.com or johndoe"
                                 />
@@ -182,23 +182,23 @@ export const LoginView = () => {
                             <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest mb-1">Password</label>
                             <div className="relative">
                                 <Lock className="w-4 h-4 absolute left-3 top-3.5 text-stone-400" />
-                                <input 
+                                <input
                                     type="password" required
-                                    className="w-full pl-10 bg-stone-50 border border-stone-200 rounded-xl p-3 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all text-sm"
+                                    className="w-full pl-10 bg-[color:var(--surface-muted)] border border-[color:var(--border)] rounded-xl p-3 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 transition-all text-sm"
                                     value={password} onChange={e => setPassword(e.target.value)}
                                     placeholder="••••••••"
                                 />
                             </div>
                         </div>
                         {error && <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg text-center">{error}</div>}
-                        <button type="submit" disabled={loading} className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-teal-100 transition-all active:scale-95 disabled:opacity-50">
+                        <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-100 transition-all active:scale-95 disabled:opacity-50">
                             {loading ? 'Signing in...' : 'Sign In'}
                         </button>
                     </form>
                 )}
 
                 <div className="mt-6 text-center">
-                    <button onClick={() => { setIsSignUp(!isSignUp); setError(null); setSuccessMsg(null); }} className="text-stone-400 text-sm hover:text-teal-600 transition-colors">
+                    <button onClick={() => { setIsSignUp(!isSignUp); setError(null); setSuccessMsg(null); }} className="text-stone-500 text-sm hover:text-emerald-700 transition-colors">
                         {isSignUp ? "Already have an account? Sign In" : "Need an account? Create one"}
                     </button>
                 </div>
