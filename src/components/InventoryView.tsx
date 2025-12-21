@@ -29,6 +29,18 @@ const PriorityBadge = ({ priority }: { priority: number }) => {
     );
 };
 
+const palette = ['#0ea5e9', '#22c55e', '#eab308', '#a855f7', '#ef4444', '#14b8a6', '#8b5cf6', '#f59e0b'];
+
+const getZoneColor = (zone: string, alpha = 1) => {
+    if (!zone) return `rgba(120, 113, 108, ${alpha})`;
+    const hash = zone.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const base = palette[hash % palette.length];
+    const r = parseInt(base.slice(1, 3), 16);
+    const g = parseInt(base.slice(3, 5), 16);
+    const b = parseInt(base.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
 export const InventoryView: React.FC<InventoryViewProps> = ({ 
   inventory, onBack, initialFilter, availableZones, onAddZone, onDeleteZone, onAddTask, onUpdateTask, onDeleteTask, onExport, onImport
 }) => {
@@ -48,14 +60,16 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const defaultZone = availableZones.length > 0 ? availableZones[0] : '';
   const startZone = (initialFilter && initialFilter !== 'All') ? initialFilter : defaultZone;
 
-  const [newItem, setNewItem] = useState({ 
-      zone: startZone, 
-      label: '', 
+  const [newItem, setNewItem] = useState({
+      zone: startZone,
+      label: '',
       duration: 10,
       priority: 2 as Priority,
       recurrence: 0,
       dependency: null as string | null
   });
+
+  const [isMobile, setIsMobile] = useState(false);
 
   // Reset form when opening/closing or changing filter
   useEffect(() => {
@@ -71,6 +85,20 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
         });
       }
   }, [isAdding, filterZone, availableZones]);
+
+  useEffect(() => {
+      const checkMobile = () => {
+          if (typeof window !== 'undefined') {
+              const pointerCoarse = window.matchMedia('(pointer: coarse)').matches;
+              const smallViewport = window.matchMedia('(max-width: 768px)').matches;
+              setIsMobile(pointerCoarse || smallViewport);
+          }
+      };
+
+      checkMobile();
+      window.addEventListener('resize', checkMobile);
+      return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const displayedInventory = filterZone === 'All' 
       ? inventory 
@@ -376,21 +404,37 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                               />
                           </div>
 
-                          <div className="grid grid-cols-2 gap-4">
+                              <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-2">
                                   <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Est. Time</label>
-                                  <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl p-3 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100 transition-all">
-                                      <input 
-                                          type="number" 
-                                          className="bg-transparent text-stone-900 text-sm w-full outline-none font-bold"
-                                          placeholder="10"
-                                          value={newItem.duration}
-                                          onChange={e => setNewItem({...newItem, duration: parseInt(e.target.value) || 0})}
-                                      />
-                                      <span className="text-xs text-stone-500 font-bold uppercase">min</span>
-                                  </div>
+                                  {isMobile ? (
+                                      <div className="flex items-center gap-3 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100 transition-all">
+                                          <select
+                                              className="flex-1 bg-transparent text-stone-900 text-sm font-bold outline-none appearance-none cursor-pointer py-1"
+                                              value={newItem.duration}
+                                              onChange={e => setNewItem({...newItem, duration: parseInt(e.target.value) || 1})}
+                                          >
+                                              {Array.from({ length: 60 }, (_, i) => i + 1).map((minute) => (
+                                                  <option key={minute} value={minute}>{minute} min</option>
+                                              ))}
+                                          </select>
+                                          <span className="text-[10px] font-bold uppercase text-teal-600 bg-teal-50 px-2 py-1 rounded-full border border-teal-100">Scroll</span>
+                                      </div>
+                                  ) : (
+                                      <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl p-3 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100 transition-all">
+                                          <input
+                                              type="number"
+                                              className="bg-transparent text-stone-900 text-sm w-full outline-none font-bold"
+                                              placeholder="10"
+                                              value={newItem.duration}
+                                              min={1}
+                                              onChange={e => setNewItem({...newItem, duration: parseInt(e.target.value) || 0})}
+                                          />
+                                          <span className="text-xs text-stone-500 font-bold uppercase">min</span>
+                                      </div>
+                                  )}
                               </div>
-                              
+
                               <div className="space-y-2">
                                   <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Priority</label>
                                   <select 
@@ -405,26 +449,37 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                               </div>
                           </div>
                           
-                           <div className="space-y-2">
-                              <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Prerequisite (Dependency)</label>
-                              <div className="relative">
-                                  <Link className="w-4 h-4 absolute left-3 top-3.5 text-stone-400" />
-                                  <select 
-                                      className="w-full pl-10 bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none font-medium cursor-pointer appearance-none"
-                                      value={newItem.dependency || ""}
-                                      onChange={e => setNewItem({...newItem, dependency: e.target.value || null})}
-                                  >
-                                      <option value="">None (No prerequisites)</option>
-                                      {inventory
-                                          .filter(t => t.id !== editingId)
-                                          .map(t => (
-                                          <option key={t.id} value={t.id}>
-                                              {t.label} ({t.zone})
-                                          </option>
-                                      ))}
-                                  </select>
-                              </div>
-                          </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Prerequisite (Dependency)</label>
+                                <div className="relative">
+                                    <Link className="w-4 h-4 absolute left-3 top-3.5 text-stone-400" />
+                                    {newItem.dependency && (
+                                        <span
+                                            className="absolute left-9 top-3.5 w-2.5 h-2.5 rounded-full border border-white shadow-sm"
+                                            style={{ backgroundColor: getZoneColor(inventory.find(t => t.id === newItem.dependency)?.zone || '', 0.9) }}
+                                        />
+                                    )}
+                                    <select
+                                        className="w-full pl-10 bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none font-medium cursor-pointer appearance-none"
+                                        value={newItem.dependency || ""}
+                                        onChange={e => setNewItem({...newItem, dependency: e.target.value || null})}
+                                        style={newItem.dependency ? { backgroundColor: getZoneColor(inventory.find(t => t.id === newItem.dependency)?.zone || '', 0.08) } : undefined}
+                                    >
+                                        <option value="">None (No prerequisites)</option>
+                                        {inventory
+                                            .filter(t => t.id !== editingId)
+                                            .map(t => (
+                                            <option
+                                                key={t.id}
+                                                value={t.id}
+                                                style={{ backgroundColor: getZoneColor(t.zone, 0.12) }}
+                                            >
+                                                {t.label} ({t.zone})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
 
                           <div className="bg-stone-50 border border-stone-100 rounded-xl p-3 flex items-center justify-between">
                               <label className="flex items-center gap-2 text-sm text-stone-700 cursor-pointer select-none font-bold">
