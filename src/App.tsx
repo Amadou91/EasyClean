@@ -46,7 +46,7 @@ export default function App() {
 
   return (
     /* Use h-[100dvh] and overflow-hidden to lock the app to the viewport for PWA */
-    <div className="h-[100dvh] w-full flex flex-col items-center px-4 sm:px-6 lg:px-10 py-4 bg-gradient-to-br from-stone-50 to-emerald-50/30 overflow-hidden">
+    <div className="app-shell h-[100dvh] w-full flex flex-col items-center py-4 bg-gradient-to-br from-stone-50 to-emerald-50/30 overflow-hidden">
       <div className="w-full max-w-6xl flex flex-col h-full overflow-hidden">
         
         <div className="flex justify-between items-center mb-4 sm:mb-8 pb-4 border-b border-emerald-100/50 flex-shrink-0">
