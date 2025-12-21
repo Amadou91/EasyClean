@@ -419,7 +419,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                                   <option key={minute} value={minute}>{minute} min</option>
                                               ))}
                                           </select>
-                                          <span className="text-[10px] font-bold uppercase text-teal-600 bg-teal-50 px-2 py-1 rounded-full border border-teal-100">Scroll</span>
                                       </div>
                                   ) : (
                                       <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl p-3 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100 transition-all">
