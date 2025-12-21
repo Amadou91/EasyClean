@@ -31,6 +31,34 @@ input, textarea {
 }
 */
 
+/* PWA-safe padding helpers to keep layouts edge-aligned while honoring device insets */
+.app-shell {
+    padding-left: calc(env(safe-area-inset-left, 0px) + 12px);
+    padding-right: calc(env(safe-area-inset-right, 0px) + 12px);
+}
+
+.scroll-panels {
+    padding-right: calc(env(safe-area-inset-right, 0px) + 8px);
+    padding-left: calc(env(safe-area-inset-left, 0px) + 4px);
+}
+
+@media (min-width: 640px) {
+    .scroll-panels {
+        padding-left: 0;
+    }
+}
+
+@media (display-mode: standalone) {
+    .app-shell {
+        padding-left: calc(env(safe-area-inset-left, 0px) + 8px);
+        padding-right: calc(env(safe-area-inset-right, 0px) + 8px);
+    }
+
+    .scroll-panels {
+        padding-right: calc(env(safe-area-inset-right, 0px) + 6px);
+    }
+}
+
 @layer components {
     .card-panel {
         @apply bg-white/90 border border-stone-200 shadow-[0_4px_6px_-1px_rgba(16,185,129,0.05)] backdrop-blur-sm transition-all duration-300;
