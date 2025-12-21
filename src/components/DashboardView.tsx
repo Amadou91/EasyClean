@@ -93,7 +93,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   return (
-    <div className="h-full overflow-y-auto space-y-8 animate-in fade-in pb-10 pr-2">
+    <div className="h-full overflow-y-auto space-y-8 animate-in fade-in pb-10 scroll-panels">
         {/* Status Card */}
         <div className="card-panel p-8 rounded-3xl flex justify-between items-center bg-white/80">
             <div>
@@ -150,7 +150,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <Edit className="w-3 h-3" /> Edit Tasks
                 </button>
             </div>
-            <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3">
+            <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
                 {zones.length === 0 && (
                     <div className="text-sm text-stone-500 italic p-10 text-center bg-white/50 rounded-3xl border border-dashed border-stone-300 col-span-full">
                         No areas defined yet. Add tasks to create your spaces.

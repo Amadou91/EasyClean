@@ -262,7 +262,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               ))}
           </div>
 
-          <div className="flex-1 overflow-y-auto pr-2 space-y-3 pb-24 pt-4">
+          <div className="flex-1 overflow-y-auto scroll-panels space-y-3 pb-24 pt-4">
               {displayedInventory.length === 0 ? (
                   <div className="text-center py-12 text-stone-500 text-sm bg-white/50 rounded-2xl border border-dashed border-stone-300 mt-4">
                       No items found in this filter.
