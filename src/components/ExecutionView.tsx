@@ -252,19 +252,6 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                 <div>
                     <h4 className="text-[10px] font-bold text-stone-600 uppercase tracking-[0.28em] mb-4 ml-2">Up Next</h4>
                     <div className="space-y-3">
-                        {eligibleNextTasks.map((t) => (
-                            <div key={t.id} className="flex justify-between items-center p-4 sm:p-5 rounded-2xl bg-white/90 border border-[color:var(--border)] shadow-sm text-sm text-stone-800 hover:border-emerald-300 transition-colors">
-                                <span className="truncate flex-1 font-medium">{t.label}</span>
-                                <div className="flex items-center gap-3">
-                                    {t.recurrence > 0 && <RotateCw className="w-3 h-3 text-emerald-400" />}
-                                    <PriorityBadge priority={t.priority || 2} />
-                                    <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded border w-12 text-center ${getDurationStyles(t.duration)}`}>
-                                        {t.duration}m
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
-
                         {conditionalNextTasks.map((t) => (
                             <div
                                 key={t.id}
@@ -277,6 +264,19 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                                     <span className="truncate font-semibold text-stone-800">{t.label}</span>
                                     <p className="text-[12px] text-stone-500">Becomes next after this task.</p>
                                 </div>
+                                <div className="flex items-center gap-3">
+                                    {t.recurrence > 0 && <RotateCw className="w-3 h-3 text-emerald-400" />}
+                                    <PriorityBadge priority={t.priority || 2} />
+                                    <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded border w-12 text-center ${getDurationStyles(t.duration)}`}>
+                                        {t.duration}m
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+
+                        {eligibleNextTasks.map((t) => (
+                            <div key={t.id} className="flex justify-between items-center p-4 sm:p-5 rounded-2xl bg-white/90 border border-[color:var(--border)] shadow-sm text-sm text-stone-800 hover:border-emerald-300 transition-colors">
+                                <span className="truncate flex-1 font-medium">{t.label}</span>
                                 <div className="flex items-center gap-3">
                                     {t.recurrence > 0 && <RotateCw className="w-3 h-3 text-emerald-400" />}
                                     <PriorityBadge priority={t.priority || 2} />
