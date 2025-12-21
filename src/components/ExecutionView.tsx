@@ -23,8 +23,41 @@ const PriorityBadge = ({ priority }: { priority: number }) => {
     );
 };
 
-export const ExecutionView: React.FC<ExecutionViewProps> = ({ 
-  inventory, setInventory, onBack, timeWindow, activeZone 
+const PROCESS_COOLDOWNS = [
+    {
+        starter: /\bload\b/i,
+        finisher: /\bunload\b/i,
+        minutes: 45
+    }
+];
+
+const isTaskCoolingDown = (task: Task, dependencyTask: Task) => {
+    const matchingCooldown = PROCESS_COOLDOWNS.find(({ starter, finisher }) =>
+        finisher.test(task.label) && starter.test(dependencyTask.label) && task.zone === dependencyTask.zone
+    );
+
+    if (!matchingCooldown) return false;
+
+    const finishedAt = dependencyTask.lastCompleted;
+    if (!finishedAt) return false;
+
+    const elapsedMs = Date.now() - finishedAt;
+    return elapsedMs < matchingCooldown.minutes * 60 * 1000;
+};
+
+const isTaskBlocked = (task: Task, inventory: Task[]) => {
+    if (!task.dependency) return false;
+
+    const dependencyTask = inventory.find(i => i.id === task.dependency);
+    if (!dependencyTask) return false;
+
+    if (dependencyTask.status !== 'completed') return true;
+
+    return isTaskCoolingDown(task, dependencyTask);
+};
+
+export const ExecutionView: React.FC<ExecutionViewProps> = ({
+  inventory, setInventory, onBack, timeWindow, activeZone
 }) => {
   const [sessionTasks, setSessionTasks] = useState<Task[]>([]);
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
@@ -38,8 +71,8 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
     }
     
     const sorted = pending.sort((a, b) => {
-        const aIsBlocked = inventory.some(i => i.id === a.dependency && i.status !== 'completed');
-        const bIsBlocked = inventory.some(i => i.id === b.dependency && i.status !== 'completed');
+        const aIsBlocked = isTaskBlocked(a, inventory);
+        const bIsBlocked = isTaskBlocked(b, inventory);
         
         if (aIsBlocked && !bIsBlocked) return 1;
         if (!aIsBlocked && bIsBlocked) return -1;
@@ -54,10 +87,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
     const queue: Task[] = [];
     
     for (const task of sorted) {
-        if (task.dependency) {
-             const dep = inventory.find(i => i.id === task.dependency);
-             if(dep && dep.status !== 'completed') continue;
-        }
+        if (isTaskBlocked(task, inventory)) continue;
 
         if (accumulatedTime + task.duration <= timeWindow) {
             queue.push(task);
@@ -93,10 +123,10 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
     const currentTask = sessionTasks[currentTaskIndex];
     if (!currentTask) return;
 
-    const candidates = inventory.filter(t => 
-        t.status === 'pending' && 
+    const candidates = inventory.filter(t =>
+        t.status === 'pending' &&
         !sessionTasks.find(st => st.id === t.id) &&
-        !inventory.some(i => i.id === t.dependency && i.status !== 'completed')
+        !isTaskBlocked(t, inventory)
     );
 
     if (candidates.length === 0) {

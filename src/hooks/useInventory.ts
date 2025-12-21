@@ -54,18 +54,20 @@ export function useInventory() {
                 const now = new Date();
                 const updates: Promise<unknown>[] = [];
                 const finalTasks = taskData.map((t: Task & { completed_at?: string }) => {
-                    if (t.status === 'completed' && t.recurrence > 0 && t.completed_at) {
-                        const completedDate = new Date(t.completed_at);
+                    const completedDate = t.completed_at ? new Date(t.completed_at) : null;
+                    const lastCompleted = t.lastCompleted ?? (completedDate ? completedDate.getTime() : null);
+
+                    if (t.status === 'completed' && t.recurrence > 0 && completedDate) {
                         const diffTime = Math.abs(now.getTime() - completedDate.getTime());
                         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                        
+
                         // If recurring time has passed, reset the task
                         if (diffDays >= t.recurrence) {
                             updates.push(resetTask(t.id));
-                            return { ...t, status: 'pending', completed_at: null, completed_by: null };
+                            return { ...t, status: 'pending', completed_at: null, completed_by: null, lastCompleted: null } as Task;
                         }
                     }
-                    return t;
+                    return { ...t, lastCompleted } as Task;
                 });
                 
                 // Fire off background updates if needed, but render immediately
