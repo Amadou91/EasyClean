@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Task } from '../types';
-import { Check, Clock, ArrowLeft, RotateCw, SkipForward } from 'lucide-react';
+import { Check, Clock, ArrowLeft, RotateCw, SkipForward, Lock } from 'lucide-react';
 
 interface ExecutionViewProps {
   inventory: Task[];
@@ -121,6 +121,32 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
   };
 
   const currentTask = sessionTasks[currentTaskIndex];
+
+  const eligibleNextTasks = sessionTasks.slice(currentTaskIndex + 1);
+
+  const conditionalNextTasks = useMemo(() => {
+    if (!currentTask) return [];
+
+    return inventory
+      .filter(t => {
+        const matchesZone = !activeZone || t.zone === activeZone;
+        const isBlockedByCurrent = t.dependency === currentTask.id;
+        const notAlreadyQueued = !eligibleNextTasks.find(nt => nt.id === t.id);
+
+        return (
+          t.status === 'pending' &&
+          matchesZone &&
+          isBlockedByCurrent &&
+          notAlreadyQueued
+        );
+      })
+      .sort((a, b) => {
+        if (a.priority !== b.priority) {
+          return (a.priority || 2) - (b.priority || 2);
+        }
+        return a.duration - b.duration;
+      });
+  }, [inventory, currentTask, activeZone, eligibleNextTasks]);
   
     if (sessionTasks.length === 0) {
          return (
@@ -226,7 +252,29 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                 <div>
                     <h4 className="text-[10px] font-bold text-stone-600 uppercase tracking-[0.28em] mb-4 ml-2">Up Next</h4>
                     <div className="space-y-3">
-                        {sessionTasks.slice(currentTaskIndex + 1).map((t) => (
+                        {conditionalNextTasks.map((t) => (
+                            <div
+                                key={t.id}
+                                className="flex justify-between items-start p-4 sm:p-5 rounded-2xl bg-white/60 border border-dashed border-emerald-300/70 shadow-sm text-sm text-stone-600 backdrop-blur transition-colors"
+                            >
+                                <div className="flex flex-col gap-1 flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.08em] text-emerald-700">
+                                        <Lock className="w-3.5 h-3.5" /> Unlocks next
+                                    </div>
+                                    <span className="truncate font-semibold text-stone-800">{t.label}</span>
+                                    <p className="text-[12px] text-stone-500">Becomes next after this task.</p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    {t.recurrence > 0 && <RotateCw className="w-3 h-3 text-emerald-400" />}
+                                    <PriorityBadge priority={t.priority || 2} />
+                                    <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded border w-12 text-center ${getDurationStyles(t.duration)}`}>
+                                        {t.duration}m
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+
+                        {eligibleNextTasks.map((t) => (
                             <div key={t.id} className="flex justify-between items-center p-4 sm:p-5 rounded-2xl bg-white/90 border border-[color:var(--border)] shadow-sm text-sm text-stone-800 hover:border-emerald-300 transition-colors">
                                 <span className="truncate flex-1 font-medium">{t.label}</span>
                                 <div className="flex items-center gap-3">
@@ -238,7 +286,8 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                                 </div>
                             </div>
                         ))}
-                        {sessionTasks.slice(currentTaskIndex + 1).length === 0 && (
+
+                        {eligibleNextTasks.length === 0 && conditionalNextTasks.length === 0 && (
                             <div className="text-sm text-stone-500 italic text-center py-6 bg-white/70 rounded-2xl border border-dashed border-[color:var(--border)]">No further tasks in queue.</div>
                         )}
                     </div>
