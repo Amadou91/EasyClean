@@ -2,11 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+html,
+body {
+    width: 100%;
+    overflow-x: hidden; /* Prevents stray horizontal scrollbars in PWA mode */
+}
+
 body {
     background: linear-gradient(to bottom right, #f0fdf4, #fafaf9);
     color: #1c1917;
     min-height: 100vh;
-    
+
     /* PREVENTS ZOOMING BEHAVIOR */
     touch-action: manipulation; /* Disables double-tap to zoom */
     -webkit-text-size-adjust: 100%; /* Prevents font scaling in landscape */
