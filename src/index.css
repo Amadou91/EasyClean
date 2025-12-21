@@ -55,6 +55,11 @@ input, textarea {
     padding-left: calc(env(safe-area-inset-left, 0px) + 10px);
 }
 
+.pwa-scroll-area {
+    -webkit-overflow-scrolling: touch; /* Restores native iOS momentum scrolling */
+    padding-bottom: env(safe-area-inset-bottom, 0px); /* Keeps gestures clear of the home indicator */
+}
+
 @media (min-width: 640px) {
     .scroll-panels {
         padding-left: 8px;
