@@ -270,9 +270,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                         ></span>
                                         <div>
                                             <div className="font-serif text-xl font-bold text-emerald-900 leading-tight">{zone}</div>
-                                            <div className="text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-700/80">
-                                                Your Tasks
-                                            </div>
                                         </div>
                                     </div>
                                     <span className="text-xs font-bold text-emerald-800 uppercase tracking-[0.24em] bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 shadow-sm">
