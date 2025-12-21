@@ -263,8 +263,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         {groupedTasks.map(({ zone, tasks }) => (
                             <div key={zone} className="space-y-3">
                                 <div className="flex items-center justify-between">
-                                    <div className="font-serif text-lg text-stone-900">{zone}</div>
-                                    <span className="text-xs font-semibold text-stone-500 uppercase tracking-[0.24em]">{tasks.length} Tasks</span>
+                                    <div className="flex items-center gap-3">
+                                        <span
+                                            aria-hidden
+                                            className="w-1 h-10 rounded-full bg-gradient-to-b from-emerald-500 via-teal-500 to-teal-700 shadow-inner"
+                                        ></span>
+                                        <div>
+                                            <div className="font-serif text-xl font-bold text-emerald-900 leading-tight">{zone}</div>
+                                        </div>
+                                    </div>
+                                    <span className="text-xs font-bold text-emerald-800 uppercase tracking-[0.24em] bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 shadow-sm">
+                                        {tasks.length} Tasks
+                                    </span>
                                 </div>
                                 <div className="space-y-3">
                                     {tasks.map(task => (

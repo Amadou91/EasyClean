@@ -122,9 +122,23 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const displayedInventory = filterZone === 'All' 
-      ? inventory 
-      : inventory.filter(t => t.zone === filterZone);
+  const displayedInventory = useMemo(() => {
+      const tasks = filterZone === 'All'
+          ? [...inventory]
+          : inventory.filter(t => t.zone === filterZone);
+
+      if (filterZone === 'All') {
+          return tasks.sort((a, b) => {
+              const priorityA = a.priority || 3;
+              const priorityB = b.priority || 3;
+
+              if (priorityA !== priorityB) return priorityA - priorityB;
+              return a.duration - b.duration;
+          });
+      }
+
+      return tasks;
+  }, [filterZone, inventory]);
 
   // Helper to determine duration color styles
   const getDurationStyles = (duration: number) => {
