@@ -93,35 +93,40 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   return (
-    <div className="min-h-full space-y-8 animate-in fade-in pb-10 scroll-panels">
+    <div className="min-h-full space-y-9 animate-in fade-in pb-10 scroll-panels">
         {/* Status Card */}
-        <div className="card-panel p-8 rounded-3xl flex justify-between items-center bg-white/80">
-            <div>
-                <div className="text-stone-500 text-xs uppercase tracking-widest font-bold mb-2">Overall Progress</div>
-                <div className="text-5xl font-serif text-stone-800 mb-4">{operationalPercent}% <span className="text-2xl text-stone-400 font-sans font-light">Tidied</span></div>
-                <div className="h-4 w-56 bg-white rounded-full overflow-hidden shadow-inner border border-stone-200">
-                    <div className="bg-gradient-to-r from-teal-400 to-emerald-500 h-full transition-all duration-1000 rounded-full" style={{ width: `${operationalPercent}%` }}></div>
+        <div className="card-panel p-8 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-6 bg-gradient-to-br from-white/90 via-white to-emerald-50/60 border-[color:var(--border)] shadow-[0_25px_70px_-40px_rgba(12,74,57,0.65)]">
+            <div className="space-y-3">
+                <div className="text-xs uppercase tracking-[0.3em] font-bold text-stone-500">Overall Progress</div>
+                <div className="flex items-end gap-3">
+                    <div className="text-5xl font-serif text-stone-900 leading-none">{operationalPercent}%</div>
+                    <span className="text-lg text-stone-500 font-semibold">tidied</span>
                 </div>
+                <div className="h-3.5 w-64 bg-[color:var(--surface-muted)] rounded-full overflow-hidden shadow-inner border border-[color:var(--border)]">
+                    <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-teal-700 h-full transition-all duration-1000 rounded-full" style={{ width: `${operationalPercent}%` }}></div>
+                </div>
+                <p className="text-sm text-stone-600 max-w-xl leading-relaxed">Keep a steady cadence—short bursts compound into a beautifully calm home.</p>
             </div>
-            <Countdown />
+            <div className="flex-shrink-0">
+                <Countdown />
+            </div>
         </div>
 
         {/* Execution Panel */}
-        <div className="card-panel p-8 rounded-3xl bg-white/90 border-teal-100">
+        <div className="card-panel p-8 rounded-3xl bg-white/95 border-[color:var(--border)]">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
                 <div className="flex-1">
-                    <label className="text-xs text-stone-600 uppercase font-bold mb-4 flex items-center gap-2 tracking-widest">
+                    <label className="text-xs text-stone-600 uppercase font-bold mb-4 flex items-center gap-2 tracking-[0.3em]">
                         <Clock className="w-4 h-4 text-teal-600" /> How much time do you have?
                     </label>
-                    {/* Added py-2 and px-1 to allow room for the scale-105 effect to avoid clipping */}
                     <div className="flex gap-3 overflow-x-auto py-2 px-1 -mx-1 no-scrollbar">
                         {[15, 30, 45, 60, 9999].map((val) => (
                             <button
                                 key={val}
                                 onClick={() => setSelectedTime(val)}
-                                className={`py-2 px-6 rounded-full text-sm font-bold transition-all whitespace-nowrap transform duration-200 shadow-sm ${
+                                className={`py-2.5 px-6 rounded-full text-sm font-bold transition-all whitespace-nowrap duration-200 shadow-sm ${
                                     getTimeColor(val, selectedTime === val)
-                                } ${selectedTime === val ? 'scale-105' : 'hover:scale-105'}`}
+                                } ${selectedTime === val ? 'scale-[1.03]' : 'hover:scale-[1.02]'}`}
                             >
                                 {val === 9999 ? 'All' : `${val}m`}
                             </button>
@@ -129,11 +134,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </div>
                 </div>
                 <div className="md:w-auto w-full">
-                    <button 
-                        onClick={() => onSwitchView('execute')} 
-                        className="w-full md:w-auto px-10 py-4 text-base rounded-full font-bold flex items-center gap-2 justify-center transition-all active:scale-95 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white shadow-lg shadow-emerald-100 hover:shadow-emerald-200"
+                    <button
+                        onClick={() => onSwitchView('execute')}
+                        className="w-full md:w-auto px-10 py-4 text-base rounded-full font-bold flex items-center gap-2 justify-center transition-all active:scale-[0.98] bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-700 hover:shadow-[0_20px_55px_-28px_rgba(12,74,57,0.9)] text-white shadow-lg"
                     >
-                        <Zap className="w-5 h-5 fill-current" /> Start Cleaning!
+                        <Zap className="w-5 h-5 fill-current" /> Start Cleaning
                     </button>
                 </div>
             </div>
@@ -142,10 +147,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Zone Lst */}
         <div className="space-y-6">
             <div className="flex justify-between items-end px-2">
-                <h3 className="font-serif text-stone-800 text-2xl">Your Spaces</h3>
+                <h3 className="font-serif text-stone-900 text-2xl">Your Spaces</h3>
                 <button
                     onClick={() => onFilterZone('All')}
-                    className="text-xs font-bold text-teal-700 hover:text-teal-900 bg-teal-50 hover:bg-teal-100 px-5 py-2.5 rounded-full transition-colors flex items-center gap-2 shadow-sm border border-teal-100"
+                    className="text-xs font-bold text-teal-800 hover:text-teal-900 bg-emerald-50 hover:bg-emerald-100 px-5 py-2.5 rounded-full transition-colors flex items-center gap-2 shadow-sm border border-[color:var(--border)]"
                 >
                     <Edit className="w-3 h-3" /> Edit Tasks
                 </button>
@@ -164,30 +169,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     const isComplete = pct === 100 && total > 0;
                     
                     return (
-                        <div 
-                            key={zone} 
-                            className="card-panel p-6 rounded-3xl flex flex-col justify-between transition-all group border-l-0 card-hover cursor-pointer relative overflow-hidden"
+                        <div
+                            key={zone}
+                            className="card-panel p-6 rounded-3xl flex flex-col justify-between transition-all group border-l-0 card-hover cursor-pointer relative overflow-hidden bg-white/95"
                             onClick={() => onFilterZone(zone)}
                         >
                             <div className="flex items-start justify-between mb-6">
                                 <div className="flex items-center gap-4">
-                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg shadow-sm transition-colors ${isComplete ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-100 text-stone-600'}`}>
+                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg shadow-inner transition-colors ${isComplete ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-[color:var(--surface-muted)] text-stone-600 border border-[color:var(--border)]'}`}>
                                         {isComplete ? <Check className="w-6 h-6" /> : zone.charAt(0)}
                                     </div>
                                     <div>
-                                        <div className="font-serif font-bold text-stone-800 text-lg leading-tight">{zone}</div>
-                                        <div className="text-xs text-stone-500 font-medium mt-1 uppercase tracking-wide">{done}/{total} Done</div>
+                                        <div className="font-serif font-bold text-stone-900 text-lg leading-tight">{zone}</div>
+                                        <div className="text-xs text-stone-500 font-semibold mt-1 uppercase tracking-[0.24em]">{done}/{total} Done</div>
                                     </div>
                                 </div>
                             </div>
-                            
-                            <div className="w-full bg-stone-100 h-1.5 rounded-full overflow-hidden mb-6">
-                                <div className={`h-full rounded-full transition-all duration-500 ${isComplete ? 'bg-emerald-500' : 'bg-stone-300'}`} style={{width: `${pct}%`}}></div>
+
+                            <div className="w-full bg-[color:var(--surface-muted)] h-1.5 rounded-full overflow-hidden mb-6 border border-[color:var(--border)]">
+                                <div className={`h-full rounded-full transition-all duration-500 ${isComplete ? 'bg-gradient-to-r from-emerald-400 to-emerald-600' : 'bg-stone-300'}`} style={{width: `${pct}%`}}></div>
                             </div>
 
-                            <button 
+                            <button
                                 onClick={(e) => { e.stopPropagation(); onTackleArea(zone); }}
-                                className="w-full py-2.5 text-[11px] font-bold text-stone-600 hover:text-teal-700 bg-stone-50 hover:bg-teal-50 rounded-xl flex items-center justify-center gap-2 transition-colors uppercase tracking-widest border border-stone-200"
+                                className="w-full py-2.5 text-[11px] font-bold text-stone-700 hover:text-teal-800 bg-white hover:bg-emerald-50 rounded-xl flex items-center justify-center gap-2 transition-all uppercase tracking-[0.24em] border border-[color:var(--border)] shadow-sm"
                             >
                                 <Play className="w-3 h-3" /> Tackle Area
                             </button>

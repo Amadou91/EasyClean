@@ -30,8 +30,8 @@ export default function App() {
 
   if (loading) {
       return (
-          <div className="min-h-screen bg-stone-50 flex items-center justify-center">
-              <div className="animate-pulse text-teal-600 font-serif text-xl">Loading EasyClean...</div>
+          <div className="min-h-screen bg-[radial-gradient(circle_at_20%_20%,#f1f8f5_0,#f7f9fb_35%,#eef4f6_100%)] flex items-center justify-center">
+              <div className="animate-pulse text-teal-700 font-serif text-xl tracking-tight">Loading EasyClean...</div>
           </div>
       );
   }
@@ -45,30 +45,31 @@ export default function App() {
   };
 
   return (
-    /* FIX: Removed 'items-center' and 'py-4'. 
-       We now let the shell be full width and handle spacing internally.
-    */
-    <div className="app-shell h-[100dvh] w-full flex flex-col bg-gradient-to-br from-stone-50 to-emerald-50/30 overflow-hidden">
-      
-      {/* HEADER SECTION
-         Now a full-width flex container that centers the actual header content.
-         Added 'pt-4' here to replace the 'py-4' removed from the parent.
-      */}
-      <div className="flex-shrink-0 w-full flex justify-center border-b border-emerald-100/50 pt-4">
-        <div className="w-full max-w-6xl flex justify-between items-center pb-4">
-            <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500 flex items-center gap-3 tracking-tight font-serif cursor-pointer" onClick={() => setView('dashboard')}>
-                    <span className="bg-gradient-to-br from-emerald-500 to-teal-500 text-white p-1.5 sm:p-2 rounded-xl shadow-lg shadow-emerald-200">
-                        <Home className="w-5 h-5 sm:w-6 sm:h-6" />
-                    </span>
+    <div className="app-shell h-[100dvh] w-full flex flex-col overflow-hidden">
+
+      <div className="flex-shrink-0 w-full flex justify-center pt-5">
+        <div className="glass-panel w-full max-w-6xl flex justify-between items-center px-5 py-4 rounded-3xl">
+            <div className="flex items-center gap-3">
+                <button
+                    className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white p-2 sm:p-2.5 rounded-2xl shadow-lg shadow-emerald-200 border border-white/50"
+                    onClick={() => setView('dashboard')}
+                    aria-label="Go to dashboard"
+                >
+                    <Home className="w-5 h-5 sm:w-6 sm:h-6" />
+                </button>
+                <h1
+                    className="text-2xl sm:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-700 to-teal-500 tracking-tight font-serif cursor-pointer"
+                    onClick={() => setView('dashboard')}
+                >
                     EasyClean
                 </h1>
             </div>
             <div className="flex items-center gap-3">
-                <div className="text-xs text-stone-400 font-medium hidden sm:block">
+                <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 border border-[color:var(--border)] text-[13px] font-semibold text-stone-700 shadow-inner">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden />
                     {user.email}
                 </div>
-                <button onClick={handleLogout} className="text-stone-400 hover:text-red-500 transition-colors p-2 hover:bg-white rounded-xl hover:shadow-sm" title="Sign Out">
+                <button onClick={handleLogout} className="text-stone-500 hover:text-red-600 transition-all p-2 hover:bg-white rounded-xl hover:shadow-sm border border-transparent hover:border-[color:var(--border)]" title="Sign Out">
                     <LogOut className="w-5 h-5" />
                 </button>
             </div>
@@ -79,15 +80,15 @@ export default function App() {
          FIX: This is now 'w-full' (Full Width).
          It captures scroll gestures across the entire screen width.
       */}
-      <div className="flex-1 min-h-0 w-full overflow-y-auto relative overscroll-contain pwa-scroll-area">
-          
+      <div className="flex-1 min-h-0 w-full overflow-y-auto relative overscroll-contain pwa-scroll-area mt-4 pb-6">
+
           {/* CONTENT WRAPPER
              The 'max-w-6xl' constraint is moved INSIDE the scroll view.
              Added 'min-h-full' to ensure views that need height can stretch.
           */}
-          <div className="w-full max-w-6xl mx-auto min-h-full">
+          <div className="w-full max-w-6xl mx-auto min-h-full px-2 sm:px-4">
             {view === 'dashboard' && (
-                <DashboardView 
+                <DashboardView
                 inventory={inventory}
                 onSwitchView={setView}
                 onFilterZone={(z) => { setFilterZone(z); setView('inventory'); }}

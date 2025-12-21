@@ -2,10 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+    color-scheme: light;
+    --bg: #f7f9fb;
+    --bg-muted: #eef4f6;
+    --surface: #ffffff;
+    --surface-muted: #f5f7fb;
+    --border: #d7e2ec;
+    --border-strong: #b8c7d6;
+    --text: #0f172a;
+    --text-muted: #4b5563;
+    --accent: #0f766e;
+    --accent-strong: #0a4f47;
+    --accent-soft: #e6f4f2;
+    --warning: #f59e0b;
+    --danger: #dc2626;
+    --shadow-soft: 0 25px 80px -45px rgba(12, 74, 57, 0.55);
+    --shadow-strong: 0 18px 45px -30px rgba(6, 95, 70, 0.5);
+    font-feature-settings: "cv02" 1, "cv03" 1, "cv04" 1, "cv11" 1;
+}
+
 html,
 body {
     width: 100%;
-    overflow-x: hidden; /* Prevents stray horizontal scrollbars in PWA mode */
+    overflow-x: hidden;
 }
 
 html,
@@ -14,81 +34,88 @@ body,
     height: 100%;
 }
 
-#root {
-    min-height: 100dvh; /* Keeps the app pinned to the dynamic viewport height for PWAs */
-}
-
 body {
-    background: linear-gradient(to bottom right, #f0fdf4, #fafaf9);
-    color: #1c1917;
     min-height: 100vh;
-
-    /* Prevents the document from competing with in-app scrolling */
+    background: radial-gradient(circle at 20% 20%, #f1f8f5 0, #f7f9fb 35%, #eef4f6 100%);
+    color: var(--text);
+    font-family: 'Inter', 'Quicksand', system-ui, -apple-system, sans-serif;
+    letter-spacing: -0.01em;
+    line-height: 1.6;
     overflow-y: hidden;
-
-    /* PREVENTS ZOOMING BEHAVIOR */
-    touch-action: manipulation; /* Disables double-tap to zoom */
-    -webkit-text-size-adjust: 100%; /* Prevents font scaling in landscape */
-    overscroll-behavior-y: none; /* Prevents "rubber banding" bounce effect */
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+    overscroll-behavior-y: none;
+    background-attachment: fixed;
 }
 
-/* Optional: Makes it feel more like an app by disabling text selection (except in inputs) */
-/*
-body {
-    -webkit-user-select: none;
-    user-select: none;
+* {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
 }
-input, textarea {
-    -webkit-user-select: text;
-    user-select: text;
-}
-*/
 
-/* PWA-safe padding helpers to keep layouts edge-aligned while honoring device insets */
+::selection {
+    background: rgba(15, 118, 110, 0.18);
+    color: var(--text);
+}
+
 .app-shell {
-    padding-left: calc(env(safe-area-inset-left, 0px) + 12px);
-    padding-right: calc(env(safe-area-inset-right, 0px) + 12px);
+    padding-left: calc(env(safe-area-inset-left, 0px) + 18px);
+    padding-right: calc(env(safe-area-inset-right, 0px) + 18px);
 }
 
 .scroll-panels {
-    padding-right: calc(env(safe-area-inset-right, 0px) + 10px);
-    padding-left: calc(env(safe-area-inset-left, 0px) + 10px);
+    padding-right: calc(env(safe-area-inset-right, 0px) + 14px);
+    padding-left: calc(env(safe-area-inset-left, 0px) + 14px);
 }
 
 .pwa-scroll-area {
-    -webkit-overflow-scrolling: touch; /* Restores native iOS momentum scrolling */
-    padding-bottom: env(safe-area-inset-bottom, 0px); /* Keeps gestures clear of the home indicator */
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 @media (min-width: 640px) {
     .scroll-panels {
-        padding-left: 8px;
-        padding-right: 12px;
+        padding-left: 12px;
+        padding-right: 16px;
     }
 }
 
 @media (display-mode: standalone) {
     .app-shell {
-        padding-left: calc(env(safe-area-inset-left, 0px) + 8px);
-        padding-right: calc(env(safe-area-inset-right, 0px) + 8px);
+        padding-left: calc(env(safe-area-inset-left, 0px) + 12px);
+        padding-right: calc(env(safe-area-inset-right, 0px) + 12px);
     }
 
     .scroll-panels {
-        padding-right: calc(env(safe-area-inset-right, 0px) + 10px);
-        padding-left: calc(env(safe-area-inset-left, 0px) + 10px);
+        padding-right: calc(env(safe-area-inset-right, 0px) + 12px);
+        padding-left: calc(env(safe-area-inset-left, 0px) + 12px);
+    }
+}
+
+@layer base {
+    h1, h2, h3, h4, h5, h6 {
+        letter-spacing: -0.02em;
+        color: var(--text);
     }
 }
 
 @layer components {
     .card-panel {
-        @apply bg-white/90 border border-stone-200 shadow-[0_4px_6px_-1px_rgba(16,185,129,0.05)] backdrop-blur-sm transition-all duration-300;
+        @apply bg-white/90 border border-[color:var(--border)] shadow-[0_18px_55px_-40px_rgba(6,95,70,0.55)] backdrop-blur-lg transition-all duration-300;
     }
     .card-hover:hover {
-        @apply -translate-y-1 shadow-[0_10px_15px_-3px_rgba(16,185,129,0.1)] border-emerald-300 bg-white;
+        @apply -translate-y-1 shadow-[0_28px_70px_-40px_rgba(6,95,70,0.65)] border-[color:var(--border-strong)] bg-white;
+    }
+
+    .glass-panel {
+        background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7));
+        border: 1px solid rgba(215, 226, 236, 0.8);
+        box-shadow: 0 25px 60px -35px rgba(15, 118, 110, 0.35);
+        backdrop-filter: blur(16px) saturate(140%);
     }
 }
 
-::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar { width: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #a7f3d0; border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: #34d399; }
+::-webkit-scrollbar-thumb { background: rgba(15, 118, 110, 0.2); border-radius: 12px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(15, 118, 110, 0.4); }

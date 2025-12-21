@@ -122,26 +122,26 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
 
   const currentTask = sessionTasks[currentTaskIndex];
   
-  if (sessionTasks.length === 0) {
-       return (
-          <div className="flex flex-col items-center justify-center h-full text-center space-y-6 animate-in zoom-in-95">
-              <div className="w-24 h-24 rounded-full bg-white flex items-center justify-center border border-stone-300 shadow-sm">
-                   {noTasksFound ? <Clock className="w-10 h-10 text-stone-400" /> : <Check className="w-10 h-10 text-stone-400" />}
-              </div>
-              <div>
-                  <h3 className="text-3xl font-serif text-stone-900 mb-2">
-                      {noTasksFound ? "Time Limit Reached" : (activeZone ? `${activeZone} Clear!` : "All Caught Up!")}
-                  </h3>
-                  <p className="text-stone-600 max-w-xs mx-auto text-sm leading-relaxed">
-                      {noTasksFound 
-                          ? "Remaining tasks take longer than your selected time." 
-                          : "No pending tasks match your criteria. Relax!"}
-                  </p>
-              </div>
-              <button onClick={onBack} className="px-6 py-3 bg-white hover:bg-stone-50 text-stone-700 border border-stone-300 rounded-full font-bold transition-all shadow-sm">Return to Dashboard</button>
-          </div>
-       )
-  }
+    if (sessionTasks.length === 0) {
+         return (
+            <div className="flex flex-col items-center justify-center h-full text-center space-y-6 animate-in zoom-in-95">
+                <div className="w-24 h-24 rounded-full bg-emerald-50 flex items-center justify-center border border-[color:var(--border)] shadow-lg shadow-emerald-100">
+                     {noTasksFound ? <Clock className="w-10 h-10 text-emerald-700" /> : <Check className="w-10 h-10 text-emerald-700" />}
+                </div>
+                <div>
+                    <h3 className="text-3xl font-serif text-stone-900 mb-2">
+                        {noTasksFound ? "Time Limit Reached" : (activeZone ? `${activeZone} Clear!` : "All Caught Up!")}
+                    </h3>
+                    <p className="text-stone-600 max-w-xs mx-auto text-sm leading-relaxed">
+                        {noTasksFound
+                            ? "Remaining tasks take longer than your selected time."
+                            : "No pending tasks match your criteria. Take a breath."}
+                    </p>
+                </div>
+                <button onClick={onBack} className="px-6 py-3 bg-white hover:bg-emerald-50 text-stone-800 border border-[color:var(--border)] rounded-full font-bold transition-all shadow-md shadow-emerald-100">Return to Dashboard</button>
+            </div>
+         )
+    }
   
   if (!currentTask) {
       return (
@@ -160,33 +160,33 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
       );
   }
 
-  return (
-      <div className="flex flex-col min-h-full animate-in slide-in-from-right duration-300 overflow-hidden">
-          <div className="flex justify-between items-center mb-6 sm:mb-8 flex-shrink-0">
-              <button onClick={onBack} className="text-stone-600 hover:text-stone-900 text-sm font-bold flex items-center gap-2 px-4 py-2 rounded-full hover:bg-white transition-colors">
-                  <ArrowLeft className="w-4 h-4" /> End
-              </button>
-              <div className="text-[10px] sm:text-xs font-bold text-teal-600 uppercase tracking-widest bg-teal-50 border border-teal-200 px-4 py-2 rounded-full shadow-sm">
-                  Step {currentTaskIndex + 1} <span className="text-teal-400">/</span> {sessionTasks.length}
-              </div>
-          </div>
+    return (
+        <div className="flex flex-col min-h-full animate-in slide-in-from-right duration-300 overflow-hidden">
+            <div className="flex justify-between items-center mb-6 sm:mb-8 flex-shrink-0">
+                <button onClick={onBack} className="text-stone-700 hover:text-stone-900 text-sm font-bold flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-[color:var(--border)] hover:bg-white transition-colors shadow-sm">
+                    <ArrowLeft className="w-4 h-4" /> End Session
+                </button>
+                <div className="text-[10px] sm:text-xs font-bold text-emerald-700 uppercase tracking-[0.28em] bg-emerald-50 border border-[color:var(--border)] px-4 py-2 rounded-full shadow-sm">
+                    Step {currentTaskIndex + 1} <span className="text-emerald-400">/</span> {sessionTasks.length}
+                </div>
+            </div>
 
-          <div className="space-y-8 pb-6">
-              <div className="card-panel rounded-[2rem] overflow-hidden shadow-xl bg-white border-t-8 border-t-teal-500 flex-shrink-0">
-                   <div className="p-6 sm:p-10 space-y-6 sm:y-8">
+            <div className="space-y-8 pb-6">
+                <div className="card-panel rounded-[2rem] overflow-hidden shadow-xl bg-white border-t-8 border-t-emerald-500 flex-shrink-0">
+                     <div className="p-6 sm:p-10 space-y-6 sm:y-8">
                       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-                          <div className="space-y-3">
-                              <div className="flex items-center gap-3">
-                                  <span className="text-[10px] font-bold text-stone-500 uppercase tracking-widest border border-stone-300 px-3 py-1 rounded-full">
-                                      {currentTask.zone}
-                                  </span>
-                                  <PriorityBadge priority={currentTask.priority || 2} />
-                                  {currentTask.recurrence > 0 && (
-                                      <div className="text-[10px] text-teal-600 flex items-center gap-1 bg-teal-50 px-3 py-1 rounded-full font-bold border border-teal-200">
-                                          <RotateCw className="w-3 h-3" /> {currentTask.recurrence}d
-                                      </div>
-                                  )}
-                              </div>
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-3">
+                                    <span className="text-[10px] font-bold text-stone-600 uppercase tracking-[0.28em] border border-[color:var(--border)] bg-[color:var(--surface-muted)] px-3 py-1 rounded-full">
+                                        {currentTask.zone}
+                                    </span>
+                                    <PriorityBadge priority={currentTask.priority || 2} />
+                                    {currentTask.recurrence > 0 && (
+                                        <div className="text-[10px] text-emerald-700 flex items-center gap-1 bg-emerald-50 px-3 py-1 rounded-full font-bold border border-[color:var(--border)]">
+                                            <RotateCw className="w-3 h-3" /> {currentTask.recurrence}d
+                                        </div>
+                                    )}
+                                </div>
                               <h2 className="text-2xl sm:text-4xl font-serif text-stone-900 leading-tight">
                                   {currentTask.label}
                               </h2>
@@ -198,51 +198,51 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                       </div>
 
                       <div className="grid grid-cols-1 gap-3 sm:gap-4 pt-2">
-                          <button 
-                            onClick={handleComplete}
-                            className="text-base sm:text-lg py-4 sm:py-5 w-full rounded-xl font-bold text-white bg-emerald-500 hover:bg-emerald-600 shadow-xl shadow-emerald-200 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-2"
-                          >
-                              <Check className="w-5 h-5 sm:w-6 sm:h-6" /> Mark Complete
-                          </button>
-                          
-                          {activeZone ? (
-                              <button onClick={handleSkip} className="w-full py-3 sm:py-4 text-stone-600 bg-white hover:bg-stone-50 border border-stone-200 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
-                                  <SkipForward className="w-4 h-4" /> Skip Task
-                              </button>
-                          ) : (
-                              <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                                  <button onClick={handleSwap} className="py-3 sm:py-4 text-stone-600 bg-white hover:bg-stone-50 border border-stone-200 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
-                                      <RotateCw className="w-4 h-4" /> Swap
-                                  </button>
-                                  <button onClick={handleSkip} className="py-3 sm:py-4 text-stone-600 bg-white hover:bg-stone-50 border border-stone-200 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
-                                      <SkipForward className="w-4 h-4" /> Skip
-                                  </button>
-                              </div>
-                          )}
+                            <button
+                              onClick={handleComplete}
+                              className="text-base sm:text-lg py-4 sm:py-5 w-full rounded-xl font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-xl shadow-emerald-200 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-2"
+                            >
+                                <Check className="w-5 h-5 sm:w-6 sm:h-6" /> Mark Complete
+                            </button>
+
+                            {activeZone ? (
+                                <button onClick={handleSkip} className="w-full py-3 sm:py-4 text-stone-700 bg-white hover:bg-[color:var(--surface-muted)] border border-[color:var(--border)] rounded-xl font-bold transition-all flex items-center justify-center gap-2">
+                                    <SkipForward className="w-4 h-4" /> Skip Task
+                                </button>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                                    <button onClick={handleSwap} className="py-3 sm:py-4 text-stone-700 bg-white hover:bg-[color:var(--surface-muted)] border border-[color:var(--border)] rounded-xl font-bold transition-all flex items-center justify-center gap-2">
+                                        <RotateCw className="w-4 h-4" /> Swap
+                                    </button>
+                                    <button onClick={handleSkip} className="py-3 sm:py-4 text-stone-700 bg-white hover:bg-[color:var(--surface-muted)] border border-[color:var(--border)] rounded-xl font-bold transition-all flex items-center justify-center gap-2">
+                                        <SkipForward className="w-4 h-4" /> Skip
+                                    </button>
+                                </div>
+                            )}
                       </div>
                    </div>
               </div>
 
-              <div>
-                  <h4 className="text-[10px] font-bold text-stone-500 uppercase tracking-widest mb-4 ml-2">Up Next</h4>
-                  <div className="space-y-3">
-                      {sessionTasks.slice(currentTaskIndex + 1).map((t) => (
-                          <div key={t.id} className="flex justify-between items-center p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 shadow-sm text-sm text-stone-700 hover:border-teal-300 transition-colors">
-                              <span className="truncate flex-1 font-medium">{t.label}</span>
-                              <div className="flex items-center gap-3">
-                                  {t.recurrence > 0 && <RotateCw className="w-3 h-3 text-teal-400" />}
-                                  <PriorityBadge priority={t.priority || 2} />
-                                  <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded border w-12 text-center ${getDurationStyles(t.duration)}`}>
-                                      {t.duration}m
-                                  </span>
-                              </div>
-                          </div>
-                      ))}
-                      {sessionTasks.slice(currentTaskIndex + 1).length === 0 && (
-                          <div className="text-sm text-stone-500 italic text-center py-6 bg-white/50 rounded-2xl border border-dashed border-stone-300">No further tasks in queue.</div>
-                      )}
-                  </div>
-              </div>
+                <div>
+                    <h4 className="text-[10px] font-bold text-stone-600 uppercase tracking-[0.28em] mb-4 ml-2">Up Next</h4>
+                    <div className="space-y-3">
+                        {sessionTasks.slice(currentTaskIndex + 1).map((t) => (
+                            <div key={t.id} className="flex justify-between items-center p-4 sm:p-5 rounded-2xl bg-white/90 border border-[color:var(--border)] shadow-sm text-sm text-stone-800 hover:border-emerald-300 transition-colors">
+                                <span className="truncate flex-1 font-medium">{t.label}</span>
+                                <div className="flex items-center gap-3">
+                                    {t.recurrence > 0 && <RotateCw className="w-3 h-3 text-emerald-400" />}
+                                    <PriorityBadge priority={t.priority || 2} />
+                                    <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded border w-12 text-center ${getDurationStyles(t.duration)}`}>
+                                        {t.duration}m
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                        {sessionTasks.slice(currentTaskIndex + 1).length === 0 && (
+                            <div className="text-sm text-stone-500 italic text-center py-6 bg-white/70 rounded-2xl border border-dashed border-[color:var(--border)]">No further tasks in queue.</div>
+                        )}
+                    </div>
+                </div>
           </div>
       </div>
   );
