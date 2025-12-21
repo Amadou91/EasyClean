@@ -47,7 +47,7 @@ export default function App() {
   return (
     /* Use h-[100dvh] and overflow-hidden to lock the app to the viewport for PWA */
     <div className="app-shell h-[100dvh] w-full flex flex-col items-center py-4 bg-gradient-to-br from-stone-50 to-emerald-50/30 overflow-hidden">
-      <div className="w-full max-w-6xl flex flex-col h-full overflow-hidden">
+      <div className="w-full max-w-6xl flex flex-col h-full min-h-0 overflow-hidden">
         
         <div className="flex justify-between items-center mb-4 sm:mb-8 pb-4 border-b border-emerald-100/50 flex-shrink-0">
             <div>
@@ -69,7 +69,7 @@ export default function App() {
         </div>
 
         {/* This container manages the internal scrolling for each view */}
-        <div className="flex-1 overflow-hidden relative">
+        <div className="flex-1 min-h-0 overflow-y-auto relative overscroll-contain">
           {view === 'dashboard' && (
             <DashboardView 
               inventory={inventory}

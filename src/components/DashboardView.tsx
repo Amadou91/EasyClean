@@ -93,7 +93,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   return (
-    <div className="h-full overflow-y-auto space-y-8 animate-in fade-in pb-10 scroll-panels">
+    <div className="min-h-full space-y-8 animate-in fade-in pb-10 scroll-panels">
         {/* Status Card */}
         <div className="card-panel p-8 rounded-3xl flex justify-between items-center bg-white/80">
             <div>

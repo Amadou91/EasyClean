@@ -161,7 +161,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
   }
 
   return (
-      <div className="flex flex-col h-full animate-in slide-in-from-right duration-300 overflow-hidden">
+      <div className="flex flex-col min-h-full animate-in slide-in-from-right duration-300 overflow-hidden">
           <div className="flex justify-between items-center mb-6 sm:mb-8 flex-shrink-0">
               <button onClick={onBack} className="text-stone-600 hover:text-stone-900 text-sm font-bold flex items-center gap-2 px-4 py-2 rounded-full hover:bg-white transition-colors">
                   <ArrowLeft className="w-4 h-4" /> End
@@ -171,8 +171,8 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
               </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto no-scrollbar pb-6">
-              <div className="card-panel rounded-[2rem] overflow-hidden shadow-xl bg-white border-t-8 border-t-teal-500 mb-8 flex-shrink-0">
+          <div className="space-y-8 pb-6">
+              <div className="card-panel rounded-[2rem] overflow-hidden shadow-xl bg-white border-t-8 border-t-teal-500 flex-shrink-0">
                    <div className="p-6 sm:p-10 space-y-6 sm:y-8">
                       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                           <div className="space-y-3">
