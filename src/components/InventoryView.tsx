@@ -227,7 +227,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               </div>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto pb-4 mb-2 no-scrollbar px-1">
+          <div className="flex gap-2 overflow-x-auto overflow-y-visible pt-1 pb-4 mb-2 no-scrollbar px-1">
               <button
                   onClick={() => setFilterZone('All')}
                   className={`px-5 py-2 rounded-full text-xs font-bold transition-all ${filterZone === 'All' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200 scale-105' : 'bg-white text-stone-700 border border-[color:var(--border)] hover:border-emerald-300'}`}
