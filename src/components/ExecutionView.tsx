@@ -61,10 +61,10 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
   const [sessionTasks, setSessionTasks] = useState<Task[]>([]);
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
   const [noTasksFound, setNoTasksFound] = useState(false);
+  const [skippedTaskIds, setSkippedTaskIds] = useState<string[]>([]);
 
   useEffect(() => {
-    const now = Date.now();
-    let pending = inventory.filter(t => t.status === 'pending');
+    let pending = inventory.filter(t => t.status === 'pending' && !skippedTaskIds.includes(t.id));
     
     if (activeZone) {
         pending = pending.filter(t => t.zone === activeZone);
@@ -110,7 +110,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
 
     setSessionTasks(queue);
     setCurrentTaskIndex(0);
-  }, [inventory, timeWindow, activeZone]);
+  }, [inventory, timeWindow, activeZone, skippedTaskIds]);
 
   // Helper to determine duration color styles
   const getDurationStyles = (duration: number) => {
@@ -132,8 +132,9 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
     const currentTask = sessionTasks[currentTaskIndex];
     if (!currentTask) return;
 
-    const candidates = inventory.filter(t => 
-        t.status === 'pending' && 
+    const candidates = inventory.filter(t =>
+        t.status === 'pending' &&
+        !skippedTaskIds.includes(t.id) &&
         !sessionTasks.find(st => st.id === t.id) &&
         !inventory.some(i => i.id === t.dependency && i.status !== 'completed')
     );
@@ -156,7 +157,9 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
   };
 
   const handleSkip = () => {
-       setCurrentTaskIndex(prev => Math.min(prev + 1, sessionTasks.length));
+      const task = sessionTasks[currentTaskIndex];
+      if (!task) return;
+      setSkippedTaskIds(prev => prev.includes(task.id) ? prev : [...prev, task.id]);
   };
 
   const currentTask = sessionTasks[currentTaskIndex];
