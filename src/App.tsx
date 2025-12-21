@@ -13,12 +13,11 @@ export default function App() {
   const [selectedTime, setSelectedTime] = useState(30);
   const [activeZone, setActiveZone] = useState<string | null>(null);
   
-  const { 
-    inventory, 
-    setInventory,
-    zones, 
-    addTask, 
-    deleteTask, 
+  const {
+    inventory,
+    zones,
+    addTask,
+    deleteTask,
     addZone, 
     deleteZone,
     user,
@@ -101,15 +100,15 @@ export default function App() {
                 }}
                 />
             )}
-            {view === 'execute' && (
-                <ExecutionView 
-                    inventory={inventory} 
-                    setInventory={setInventory}
-                    onBack={() => { setView('dashboard'); setActiveZone(null); }} 
-                    timeWindow={selectedTime}
-                    activeZone={activeZone}
-                />
-            )}
+      {view === 'execute' && (
+          <ExecutionView
+              inventory={inventory}
+                onBack={() => { setView('dashboard'); setActiveZone(null); }}
+                timeWindow={selectedTime}
+                activeZone={activeZone}
+                onUpdateTask={updateTask}
+            />
+        )}
             {view === 'inventory' && (
                 <InventoryView 
                     inventory={inventory} 

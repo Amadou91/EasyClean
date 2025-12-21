@@ -57,9 +57,9 @@ export function useInventory() {
                     if (t.status === 'completed' && t.recurrence > 0 && t.completed_at) {
                         const completedDate = new Date(t.completed_at);
                         const diffTime = Math.abs(now.getTime() - completedDate.getTime());
-                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                        
-                        // If recurring time has passed, reset the task
+                        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+                        // Only reset once the full recurrence window has elapsed
                         if (diffDays >= t.recurrence) {
                             updates.push(resetTask(t.id));
                             return { ...t, status: 'pending', completed_at: null, completed_by: null };
