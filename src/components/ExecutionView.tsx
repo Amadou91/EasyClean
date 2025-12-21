@@ -4,10 +4,10 @@ import { Check, Clock, ArrowLeft, RotateCw, SkipForward } from 'lucide-react';
 
 interface ExecutionViewProps {
   inventory: Task[];
-  setInventory: React.Dispatch<React.SetStateAction<Task[]>>;
   onBack: () => void;
   timeWindow: number;
   activeZone: string | null;
+  onUpdateTask: (id: string, updates: Partial<Task>) => void;
 }
 
 const PriorityBadge = ({ priority }: { priority: number }) => {
@@ -23,8 +23,8 @@ const PriorityBadge = ({ priority }: { priority: number }) => {
     );
 };
 
-export const ExecutionView: React.FC<ExecutionViewProps> = ({ 
-  inventory, setInventory, onBack, timeWindow, activeZone 
+export const ExecutionView: React.FC<ExecutionViewProps> = ({
+  inventory, onBack, timeWindow, activeZone, onUpdateTask
 }) => {
   const [sessionTasks, setSessionTasks] = useState<Task[]>([]);
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
@@ -85,7 +85,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
   const handleComplete = () => {
     const task = sessionTasks[currentTaskIndex];
     if (!task) return;
-    setInventory(prev => prev.map(t => t.id === task.id ? { ...t, status: 'completed', lastCompleted: Date.now() } : t));
+    onUpdateTask(task.id, { status: 'completed' });
     setCurrentTaskIndex(prev => Math.min(prev + 1, sessionTasks.length));
   };
 
