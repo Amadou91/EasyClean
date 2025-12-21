@@ -79,7 +79,7 @@ export default function App() {
          FIX: This is now 'w-full' (Full Width).
          It captures scroll gestures across the entire screen width.
       */}
-      <div className="flex-1 min-h-0 w-full overflow-y-auto relative overscroll-contain">
+      <div className="flex-1 min-h-0 w-full overflow-y-auto relative overscroll-contain pwa-scroll-area">
           
           {/* CONTENT WRAPPER
              The 'max-w-6xl' constraint is moved INSIDE the scroll view.
