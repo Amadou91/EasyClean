@@ -143,8 +143,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="space-y-6">
             <div className="flex justify-between items-end px-2">
                 <h3 className="font-serif text-stone-800 text-2xl">Your Spaces</h3>
-                <button 
-                    onClick={() => onSwitchView('inventory')} 
+                <button
+                    onClick={() => onFilterZone('All')}
                     className="text-xs font-bold text-teal-700 hover:text-teal-900 bg-teal-50 hover:bg-teal-100 px-5 py-2.5 rounded-full transition-colors flex items-center gap-2 shadow-sm border border-teal-100"
                 >
                     <Edit className="w-3 h-3" /> Edit Tasks
