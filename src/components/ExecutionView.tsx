@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Task } from '../types';
 import { Check, Clock, ArrowLeft, RotateCw, SkipForward, Lock } from 'lucide-react';
+import { getTaskImagePublicUrl } from '../lib/storage';
 
 interface ExecutionViewProps {
   inventory: Task[];
@@ -31,6 +32,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
   const [noTasksFound, setNoTasksFound] = useState(false);
   const [skippedTaskIds, setSkippedTaskIds] = useState<string[]>([]);
   const [sessionCompletedIds, setSessionCompletedIds] = useState<string[]>([]);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const compareTasks = (a: Task, b: Task) => {
     const aIsBlocked = inventory.some(i => i.id === a.dependency && i.status !== 'completed');
@@ -146,6 +148,8 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
       !sessionTasks.find(st => st.id === t.id)
     )
     .sort(compareTasks);
+
+  const taskImageUrl = getTaskImagePublicUrl(currentTask?.image_url);
   
     if (sessionTasks.length === 0) {
          return (
@@ -222,6 +226,20 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                           </div>
                       </div>
 
+                      {taskImageUrl && (
+                          <button
+                              type="button"
+                              onClick={() => setImagePreview(taskImageUrl)}
+                              className="mt-4 inline-flex items-center gap-3 bg-[color:var(--surface-muted)] border border-[color:var(--border)] rounded-2xl p-3 hover:border-emerald-300 transition-colors"
+                          >
+                              <img src={taskImageUrl} alt="Task visual" className="w-20 h-20 object-cover rounded-xl border border-white" />
+                              <div className="text-left">
+                                  <div className="text-xs uppercase tracking-[0.2em] text-stone-500 font-bold">Context</div>
+                                  <div className="text-sm font-semibold text-stone-800">Tap to view larger</div>
+                              </div>
+                          </button>
+                      )}
+
                       <div className="grid grid-cols-1 gap-3 sm:gap-4 pt-2">
                             <button
                               onClick={handleComplete}
@@ -289,6 +307,20 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                     </div>
                 </div>
           </div>
+          {imagePreview && (
+              <div className="fixed inset-0 bg-black/70 z-[80] flex items-center justify-center p-4" onClick={() => setImagePreview(null)}>
+                  <div className="relative bg-black rounded-2xl overflow-hidden max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
+                      <button
+                          className="absolute top-3 right-3 bg-white/90 rounded-full p-2 shadow-md border border-stone-200 hover:bg-stone-100"
+                          onClick={() => setImagePreview(null)}
+                          aria-label="Close task image"
+                      >
+                          <ArrowLeft className="w-5 h-5 text-stone-700" />
+                      </button>
+                      <img src={imagePreview} alt="Task context" className="w-full max-h-[85vh] object-contain bg-black" />
+                  </div>
+              </div>
+          )}
       </div>
   );
 };
