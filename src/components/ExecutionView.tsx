@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Task, Zone, Level } from '../types';
 import { Check, Clock, ArrowLeft, RotateCw, SkipForward, Lock } from 'lucide-react';
 import { getTaskImagePublicUrl } from '../lib/storage';
+import { isTaskDue } from '../lib/taskUtils';
 
 interface ExecutionViewProps {
   inventory: Task[];
@@ -35,6 +36,54 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
   const [skippedTaskIds, setSkippedTaskIds] = useState<string[]>([]);
   const [sessionCompletedIds, setSessionCompletedIds] = useState<string[]>([]);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const SESSION_STORAGE_KEY = 'easyCleanActiveSession';
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const contextMatches =
+        parsed?.context?.activeZone === activeZone &&
+        parsed?.context?.activeLevel === activeLevel &&
+        parsed?.context?.timeWindow === timeWindow;
+
+      if (contextMatches) {
+        setSessionCompletedIds(parsed.completedIds || []);
+        setSkippedTaskIds(parsed.skippedIds || []);
+      } else {
+        setSessionCompletedIds([]);
+        setSkippedTaskIds([]);
+      }
+    } catch (err) {
+      console.error('Failed to restore session state', err);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeZone, activeLevel, timeWindow]);
+
+  useEffect(() => {
+    try {
+      const payload = {
+        context: { activeZone, activeLevel, timeWindow },
+        completedIds: sessionCompletedIds,
+        skippedIds: skippedTaskIds,
+        updatedAt: Date.now()
+      };
+      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(payload));
+    } catch (err) {
+      console.error('Failed to persist session state', err);
+    }
+  }, [activeZone, activeLevel, sessionCompletedIds, skippedTaskIds, timeWindow]);
+
+  const clearSessionState = () => {
+    try {
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+    } catch (err) {
+      console.error('Failed to clear session state', err);
+    }
+    setSessionCompletedIds([]);
+    setSkippedTaskIds([]);
+  };
 
   const compareTasks = (a: Task, b: Task) => {
     const aIsBlocked = inventory.some(i => i.id === a.dependency && i.status !== 'completed');
@@ -58,7 +107,9 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
     const remainingTime = Math.max(timeWindow - completedDuration, 0);
 
     // Initial Filter: Pending tasks not skipped
-    let pending = inventory.filter(t => t.status === 'pending' && !skippedTaskIds.includes(t.id));
+    let pending = inventory.filter(
+      t => t.status === 'pending' && !skippedTaskIds.includes(t.id) && isTaskDue(t)
+    );
 
     // Zone Filter
     if (activeZone) {
@@ -111,6 +162,18 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
     onUpdateTask(task.id, { status: 'completed' });
     setSessionCompletedIds(prev => prev.includes(task.id) ? prev : [...prev, task.id]);
     setCurrentTaskIndex(prev => Math.min(prev + 1, sessionTasks.length));
+  };
+
+  useEffect(() => {
+    const allDone = sessionTasks.length > 0 && sessionCompletedIds.length >= sessionTasks.length;
+    if (allDone) {
+      clearSessionState();
+    }
+  }, [sessionCompletedIds.length, sessionTasks.length]);
+
+  const handleEndSession = () => {
+    clearSessionState();
+    onBack();
   };
 
   const handleSwap = () => {
@@ -212,7 +275,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
     return (
         <div className="flex flex-col min-h-full animate-in slide-in-from-right duration-300 overflow-hidden">
             <div className="flex justify-between items-center mb-6 sm:mb-8 flex-shrink-0">
-                <button onClick={onBack} className="text-stone-700 hover:text-stone-900 text-sm font-bold flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-[color:var(--border)] hover:bg-white transition-colors shadow-sm">
+                <button onClick={handleEndSession} className="text-stone-700 hover:text-stone-900 text-sm font-bold flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-[color:var(--border)] hover:bg-white transition-colors shadow-sm">
                     <ArrowLeft className="w-4 h-4" /> End Session
                 </button>
                 <div className="text-[10px] sm:text-xs font-bold text-emerald-700 uppercase tracking-[0.28em] bg-emerald-50 border border-[color:var(--border)] px-4 py-2 rounded-full shadow-sm">
