@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Task, Priority, Status } from '../types';
+import { Task, Priority, Status, Level, Room } from '../types';
 import { ArrowLeft, Trash, Plus, Repeat, Edit, Check, X, AlertTriangle, Download, Upload, Link } from 'lucide-react';
 
 interface InventoryViewProps {
   inventory: Task[];
   onBack: () => void;
   initialFilter?: string | null;
-  availableZones: string[];
-  onAddZone: (zone: string) => void;
+  availableZones: Room[];
+  onAddZone: (zone: string, level: Level) => void;
   onDeleteZone: (zone: string) => void;
+  onUpdateZoneLevel: (zone: string, level: Level) => void;
   onAddTask: (task: Task) => void;
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
   onDeleteTask: (id: string) => void;
@@ -42,8 +43,8 @@ const getZoneColor = (zone: string, alpha = 1) => {
     return `hsla(${hash}, 70%, 50%, ${alpha})`;
 };
 
-export const InventoryView: React.FC<InventoryViewProps> = ({ 
-  inventory, onBack, initialFilter, availableZones, onAddZone, onDeleteZone, onAddTask, onUpdateTask, onDeleteTask, onExport, onImport
+export const InventoryView: React.FC<InventoryViewProps> = ({
+  inventory, onBack, initialFilter, availableZones, onAddZone, onDeleteZone, onUpdateZoneLevel, onAddTask, onUpdateTask, onDeleteTask, onExport, onImport
 }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingZone, setIsAddingZone] = useState(false);
@@ -58,7 +59,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const defaultZone = availableZones.length > 0 ? availableZones[0] : '';
+  const zoneNames = availableZones.map(z => z.name);
+  const defaultZone = zoneNames.length > 0 ? zoneNames[0] : '';
   const startZone = (initialFilter && initialFilter !== 'All') ? initialFilter : defaultZone;
 
   const [newItem, setNewItem] = useState({
@@ -69,6 +71,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       recurrence: 0,
       dependency: null as string | null
   });
+  const [newZoneLevel, setNewZoneLevel] = useState<Level>('Lower Level');
+  const [isEditingLevel, setIsEditingLevel] = useState(false);
 
   const [isMobile, setIsMobile] = useState(false);
 
@@ -97,9 +101,9 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   useEffect(() => {
       if (!isAdding) {
           setEditingId(null);
-          setNewItem({ 
-            zone: filterZone !== 'All' ? filterZone : (availableZones[0] || ''), 
-            label: '', 
+          setNewItem({
+            zone: filterZone !== 'All' ? filterZone : (availableZones[0]?.name || ''),
+            label: '',
             duration: 10,
             priority: 2,
             recurrence: 0,
@@ -205,13 +209,16 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   };
 
   const handleCreateZone = () => {
-      if(newZoneName && !availableZones.includes(newZoneName)){
-          onAddZone(newZoneName);
+      if(newZoneName && !availableZones.find(z => z.name === newZoneName)){
+          onAddZone(newZoneName, newZoneLevel);
           setNewItem(prev => ({...prev, zone: newZoneName}));
           setIsAddingZone(false);
           setNewZoneName("");
+          setNewZoneLevel('Lower Level');
       }
   };
+
+  const activeRoom = availableZones.find(z => z.name === filterZone);
 
   const startEditingRecurrence = (task: Task) => {
       setEditingRecurrenceId(task.id);
@@ -269,26 +276,26 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               >
                   All
               </button>
-              {availableZones.map(z => (
+              {availableZones.map(room => (
                   <button
-                      key={z}
+                      key={room.name}
                       onClick={() => {
-                          setFilterZone(z);
+                          setFilterZone(room.name);
                           lastZoneSelectionRef.current = Date.now();
                       }}
-                      className={`group flex items-center gap-2 px-5 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${filterZone === z ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200 scale-105 pr-3' : 'bg-white text-stone-700 border border-[color:var(--border)] hover:border-emerald-300'}`}
+                      className={`group flex items-center gap-2 px-5 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${filterZone === room.name ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200 scale-105 pr-3' : 'bg-white text-stone-700 border border-[color:var(--border)] hover:border-emerald-300'}`}
                   >
-                      {z}
-                      {filterZone === z && (
+                      {room.name}
+                      {filterZone === room.name && (
                         <span
                           onClick={(e) => {
                              e.stopPropagation();
                              if (Date.now() - lastZoneSelectionRef.current < 300) return;
-                             onDeleteZone(z);
+                             onDeleteZone(room.name);
                              setFilterZone('All');
                           }}
                           className="ml-1 p-1 bg-emerald-600 rounded-full hover:bg-red-500 transition-colors cursor-pointer"
-                          title={`Delete ${z}`}
+                          title={`Delete ${room.name}`}
                         >
                             <X className="w-3 h-3 text-white" />
                         </span>
@@ -296,6 +303,47 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                   </button>
               ))}
           </div>
+
+          {activeRoom && (
+              <div className="inline-flex items-center gap-3 flex-wrap px-3 py-3 bg-white/80 border border-[color:var(--border)] rounded-2xl shadow-sm mb-2 max-w-xl">
+                  <p className="text-sm font-semibold text-stone-800">{activeRoom.name}</p>
+
+                  {isEditingLevel ? (
+                      <div className="flex items-center gap-2 flex-wrap">
+                          <div className="inline-flex bg-[color:var(--surface-muted)] border border-[color:var(--border)] rounded-full p-1" role="group" aria-label="Select room level">
+                              {(['Lower Level', 'Upper Level'] as Level[]).map((level) => (
+                                  <button
+                                      key={level}
+                                      type="button"
+                                      onClick={() => { onUpdateZoneLevel(activeRoom.name, level); setIsEditingLevel(false); }}
+                                      className={`px-3 py-1 text-xs font-semibold rounded-full transition-all ${activeRoom.level === level ? 'bg-white shadow-sm text-teal-900' : 'text-stone-600 hover:text-teal-800'}`}
+                                      aria-pressed={activeRoom.level === level}
+                                  >
+                                      {level === 'Upper Level' ? 'Upstairs' : 'Downstairs'}
+                                  </button>
+                              ))}
+                          </div>
+                          <button
+                              type="button"
+                              onClick={() => setIsEditingLevel(false)}
+                              className="px-3 py-1.5 text-[11px] font-semibold rounded-xl border border-[color:var(--border)] bg-white text-stone-600 hover:text-teal-800 transition-colors"
+                          >
+                              Done
+                          </button>
+                      </div>
+                  ) : (
+                      <button
+                          type="button"
+                          onClick={() => setIsEditingLevel(true)}
+                          className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[color:var(--surface-muted)] border border-[color:var(--border)] text-xs font-semibold text-stone-700 hover:border-emerald-300 transition-colors"
+                          aria-label="Change room level"
+                      >
+                          <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden />
+                          {activeRoom.level === 'Upper Level' ? 'Upstairs' : 'Downstairs'}
+                      </button>
+                  )}
+              </div>
+          )}
 
           <div className="scroll-panels space-y-3 pb-24 pt-4">
               {displayedInventory.length === 0 ? (
@@ -402,16 +450,30 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                           <div className="space-y-2">
                               <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Zone / Area</label>
                               {isAddingZone ? (
-                                  <div className="flex gap-2 animate-in slide-in-from-left-2 duration-200">
-                                      <input 
-                                          className="flex-1 bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all font-medium"
+                                  <div className="flex flex-col gap-2 animate-in slide-in-from-left-2 duration-200 sm:flex-row sm:flex-wrap">
+                                      <input
+                                          className="flex-1 min-w-[200px] bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all font-medium"
                                           placeholder="Name of new area..."
                                           value={newZoneName}
                                           onChange={e => setNewZoneName(e.target.value)}
                                           autoFocus
                                       />
-                                      <button onClick={handleCreateZone} className="px-4 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-bold shadow-sm transition-colors">Save</button>
-                                      <button onClick={() => setIsAddingZone(false)} className="px-3 text-stone-400 hover:text-stone-600 bg-stone-50 rounded-xl border border-stone-200"><X className="w-4 h-4" /></button>
+                                      <div className="flex items-center gap-1 bg-stone-100 border border-stone-200 rounded-xl px-2 flex-wrap sm:flex-nowrap">
+                                          {(['Lower Level', 'Upper Level'] as Level[]).map(level => (
+                                              <button
+                                                  key={level}
+                                                  type="button"
+                                                  onClick={() => setNewZoneLevel(level)}
+                                                  className={`px-3 py-2 text-xs font-bold rounded-lg transition-all ${newZoneLevel === level ? 'bg-white shadow-sm text-teal-900' : 'text-stone-600 hover:text-teal-800'}`}
+                                              >
+                                                  {level === 'Upper Level' ? 'Upstairs' : 'Downstairs'}
+                                              </button>
+                                          ))}
+                                      </div>
+                                      <div className="flex gap-2 sm:gap-3 sm:flex-1 sm:justify-end">
+                                          <button onClick={handleCreateZone} className="px-4 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-bold shadow-sm transition-colors">Save</button>
+                                          <button onClick={() => setIsAddingZone(false)} className="px-3 text-stone-400 hover:text-stone-600 bg-stone-50 rounded-xl border border-stone-200"><X className="w-4 h-4" /></button>
+                                      </div>
                                   </div>
                               ) : (
                                   <div className="flex gap-2">
@@ -421,7 +483,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                           onChange={e => setNewItem({...newItem, zone: e.target.value})}
                                       >
                                           <option value="" disabled>Select Area</option>
-                                          {availableZones.map(z => <option key={z} value={z}>{z}</option>)}
+                                          {availableZones.map(z => <option key={z.name} value={z.name}>{z.name}</option>)}
                                       </select>
                                       <button onClick={() => setIsAddingZone(true)} className="px-4 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-xl border border-stone-200 transition-colors" title="Add New Area">
                                           <Plus className="w-5 h-5" />
