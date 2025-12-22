@@ -53,7 +53,7 @@ export function useInventory() {
             if (taskData) {
                 const now = new Date();
                 const updates: Promise<unknown>[] = [];
-                const finalTasks = taskData.map((t: Task & { completed_at?: string }) => {
+                const finalTasks = taskData.map((t: Task & { completed_at?: string; resettable?: boolean }) => {
                     if (t.status === 'completed' && t.recurrence > 0 && t.completed_at) {
                         const completedDate = new Date(t.completed_at);
                         const diffTime = Math.abs(now.getTime() - completedDate.getTime());
@@ -62,10 +62,10 @@ export function useInventory() {
                         // Only reset once the full recurrence window has elapsed
                         if (diffDays >= t.recurrence) {
                             updates.push(resetTask(t.id));
-                            return { ...t, status: 'pending', completed_at: null, completed_by: null };
+                            return { ...t, status: 'pending', completed_at: null, completed_by: null, resettable: t.resettable ?? false };
                         }
                     }
-                    return t;
+                    return { ...t, resettable: t.resettable ?? false };
                 });
                 
                 // Fire off background updates if needed, but render immediately
@@ -94,7 +94,7 @@ export function useInventory() {
         
         // Optimistic Update
         const tempId = Math.random().toString();
-        const newTask = { ...task, id: tempId, user_id: user.id, created_at: new Date().toISOString() };
+        const newTask = { ...task, id: tempId, user_id: user.id, created_at: new Date().toISOString(), resettable: task.resettable ?? false };
         setInventory(prev => [newTask, ...prev]);
 
         const { data, error } = await supabase.from('tasks').insert([{
@@ -105,6 +105,7 @@ export function useInventory() {
             recurrence: task.recurrence,
             status: 'pending',
             dependency: task.dependency, // Added dependency support
+            resettable: task.resettable ?? false,
             user_id: user.id // Track who created it
         }]).select().single();
 
