@@ -8,6 +8,31 @@ export function useInventory() {
     const [zones, setZones] = useState<Room[]>([]);
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<User | null>(null);
+    const [zoneLevelSupported, setZoneLevelSupported] = useState(true);
+
+    const LEVEL_STORAGE_KEY = 'easyclean:room-levels';
+
+    const loadStoredLevels = () => {
+        try {
+            const raw = localStorage.getItem(LEVEL_STORAGE_KEY);
+            return raw ? JSON.parse(raw) as Record<string, Level> : {};
+        } catch (e) {
+            console.error('Failed to read stored levels', e);
+            return {} as Record<string, Level>;
+        }
+    };
+
+    const persistStoredLevels = (rooms: Room[]) => {
+        try {
+            const map: Record<string, Level> = {};
+            rooms.forEach(room => {
+                map[room.name] = room.level;
+            });
+            localStorage.setItem(LEVEL_STORAGE_KEY, JSON.stringify(map));
+        } catch (e) {
+            console.error('Failed to persist levels', e);
+        }
+    };
 
     // 1. Auth Listener
     useEffect(() => {
@@ -41,12 +66,19 @@ export function useInventory() {
             const { data: zoneData, error: zoneError } = await supabase.from('zones').select('name, level');
 
             if (zoneError) {
+                setZoneLevelSupported(false);
+
                 // Column might not exist for older databases; fall back to the legacy shape
                 const { data: legacyZoneData } = await supabase.from('zones').select('name');
                 if (legacyZoneData) {
-                    setZones(legacyZoneData.map((z: { name: string }) => ({ name: z.name, level: 'Lower Level' })));
+                    const storedLevels = loadStoredLevels();
+                    setZones(legacyZoneData.map((z: { name: string }) => ({
+                        name: z.name,
+                        level: storedLevels[z.name] || 'Lower Level'
+                    })));
                 }
             } else if (zoneData) {
+                setZoneLevelSupported(true);
                 setZones(zoneData.map((z: { name: string; level?: Level | null }) => ({
                     name: z.name,
                     level: z.level === 'Upper Level' ? 'Upper Level' : 'Lower Level'
@@ -154,13 +186,25 @@ export function useInventory() {
         if (!user) return;
         const newRoom: Room = { name, level };
         setZones(prev => [...prev, newRoom]);
-        await supabase.from('zones').insert([{ name, level }]);
+
+        if (zoneLevelSupported) {
+            await supabase.from('zones').insert([{ name, level }]);
+        } else {
+            await supabase.from('zones').insert([{ name }]);
+            persistStoredLevels([...zones, newRoom]);
+        }
     };
 
     const updateZoneLevel = async (name: string, level: Level) => {
         if (!user) return;
-        setZones(prev => prev.map(z => z.name === name ? { ...z, level } : z));
-        await supabase.from('zones').update({ level }).eq('name', name);
+        const updated = (prev: Room[]) => prev.map(z => z.name === name ? { ...z, level } : z);
+        setZones(updated);
+
+        if (zoneLevelSupported) {
+            await supabase.from('zones').update({ level }).eq('name', name);
+        } else {
+            persistStoredLevels(updated(zones));
+        }
     };
 
     const deleteZone = async (name: string) => {
@@ -199,11 +243,18 @@ export function useInventory() {
                     );
 
                     const newZones = incomingRooms.filter((z) => !zones.find(existing => existing.name === z.name));
-                    setZones(prev => [...prev, ...newZones]);
+                    const mergedZones = [...zones, ...newZones];
+                    setZones(mergedZones);
 
                     if (newZones.length > 0) {
-                        const zoneInserts = newZones.map((room: Room) => ({ name: room.name, level: room.level }));
-                        await supabase.from('zones').insert(zoneInserts);
+                        if (zoneLevelSupported) {
+                            const zoneInserts = newZones.map((room: Room) => ({ name: room.name, level: room.level }));
+                            await supabase.from('zones').insert(zoneInserts);
+                        } else {
+                            const zoneInserts = newZones.map((room: Room) => ({ name: room.name }));
+                            await supabase.from('zones').insert(zoneInserts);
+                            persistStoredLevels(mergedZones);
+                        }
                     }
                 }
 
@@ -258,5 +309,11 @@ export function useInventory() {
         reader.readAsText(file);
     };
 
-    return { inventory, setInventory, zones, user, loading, addTask, updateTask, deleteTask, addZone, deleteZone, updateZoneLevel, exportData, importData };
+    useEffect(() => {
+        if (!zoneLevelSupported) {
+            persistStoredLevels(zones);
+        }
+    }, [zones, zoneLevelSupported]);
+
+    return { inventory, setInventory, zones, user, loading, addTask, updateTask, deleteTask, addZone, deleteZone, updateZoneLevel, exportData, importData, zoneLevelSupported };
 }

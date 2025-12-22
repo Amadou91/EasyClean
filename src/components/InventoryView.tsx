@@ -305,48 +305,50 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           </div>
 
           {activeRoom && (
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-2 py-3 bg-white/80 border border-[color:var(--border)] rounded-2xl shadow-sm mb-2">
-                  <div className="flex-1 min-w-[200px] space-y-0.5">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-stone-500">Room Level</p>
-                      <p className="text-sm font-semibold text-stone-800">{activeRoom.name}</p>
-                      <span className="inline-flex items-center gap-2 px-3 py-1 mt-1 rounded-full bg-[color:var(--surface-muted)] border border-[color:var(--border)] text-xs font-semibold text-stone-700">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden />
-                          {activeRoom.level === 'Upper Level' ? 'Upstairs' : 'Downstairs'}
-                      </span>
-                  </div>
-
-                  {isEditingLevel ? (
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
-                          <div className="inline-flex bg-[color:var(--surface-muted)] border border-[color:var(--border)] rounded-full p-1" role="group" aria-label="Select room level">
-                              {(['Lower Level', 'Upper Level'] as Level[]).map((level) => (
-                                  <button
-                                      key={level}
-                                      type="button"
-                                      onClick={() => { onUpdateZoneLevel(activeRoom.name, level); setIsEditingLevel(false); }}
-                                      className={`px-3 py-1 text-xs font-semibold rounded-full transition-all ${activeRoom.level === level ? 'bg-white shadow-sm text-teal-900' : 'text-stone-600 hover:text-teal-800'}`}
-                                      aria-pressed={activeRoom.level === level}
-                                  >
-                                      {level === 'Upper Level' ? 'Upstairs' : 'Downstairs'}
-                                  </button>
-                              ))}
-                          </div>
-                          <button
-                              type="button"
-                              onClick={() => setIsEditingLevel(false)}
-                              className="px-3 py-2 text-xs font-bold rounded-xl border border-[color:var(--border)] bg-white text-stone-600 hover:text-teal-800 transition-colors"
-                          >
-                              Done
-                          </button>
+              <div className="inline-flex flex-col gap-2 px-3 py-3 bg-white/80 border border-[color:var(--border)] rounded-2xl shadow-sm mb-2 max-w-xl">
+                  <div className="flex flex-wrap items-center gap-3">
+                      <div className="space-y-0.5">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-stone-500">Room Level</p>
+                          <p className="text-sm font-semibold text-stone-800">{activeRoom.name}</p>
                       </div>
-                  ) : (
-                      <button
-                          type="button"
-                          onClick={() => setIsEditingLevel(true)}
-                          className="px-4 py-2 text-xs font-bold rounded-full border border-[color:var(--border)] bg-white text-stone-700 hover:text-teal-800 transition-colors self-start sm:self-auto"
-                      >
-                          Edit Level
-                      </button>
-                  )}
+
+                      <div className="flex items-center gap-2">
+                          {isEditingLevel ? (
+                              <div className="flex items-center gap-2 flex-wrap">
+                                  <div className="inline-flex bg-[color:var(--surface-muted)] border border-[color:var(--border)] rounded-full p-1" role="group" aria-label="Select room level">
+                                      {(['Lower Level', 'Upper Level'] as Level[]).map((level) => (
+                                          <button
+                                              key={level}
+                                              type="button"
+                                              onClick={() => { onUpdateZoneLevel(activeRoom.name, level); setIsEditingLevel(false); }}
+                                              className={`px-3 py-1 text-xs font-semibold rounded-full transition-all ${activeRoom.level === level ? 'bg-white shadow-sm text-teal-900' : 'text-stone-600 hover:text-teal-800'}`}
+                                              aria-pressed={activeRoom.level === level}
+                                          >
+                                              {level === 'Upper Level' ? 'Upstairs' : 'Downstairs'}
+                                          </button>
+                                      ))}
+                                  </div>
+                                  <button
+                                      type="button"
+                                      onClick={() => setIsEditingLevel(false)}
+                                      className="px-3 py-1.5 text-[11px] font-semibold rounded-xl border border-[color:var(--border)] bg-white text-stone-600 hover:text-teal-800 transition-colors"
+                                  >
+                                      Done
+                                  </button>
+                              </div>
+                          ) : (
+                              <button
+                                  type="button"
+                                  onClick={() => setIsEditingLevel(true)}
+                                  className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[color:var(--surface-muted)] border border-[color:var(--border)] text-xs font-semibold text-stone-700 hover:border-emerald-300 transition-colors"
+                                  aria-label="Change room level"
+                              >
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden />
+                                  {activeRoom.level === 'Upper Level' ? 'Upstairs' : 'Downstairs'}
+                              </button>
+                          )}
+                      </div>
+                  </div>
               </div>
           )}
 
