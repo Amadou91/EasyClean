@@ -85,17 +85,25 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
     setSkippedTaskIds([]);
   };
 
-  const compareTasks = (a: Task, b: Task) => {
-    const aIsBlocked = inventory.some(i => i.id === a.dependency && i.status !== 'completed');
-    const bIsBlocked = inventory.some(i => i.id === b.dependency && i.status !== 'completed');
+  const createTaskComparator = (completedOverrides: Set<string> = new Set()) => {
+    return (a: Task, b: Task) => {
+      const isBlocked = (task: Task) => {
+        if (!task.dependency) return false;
+        if (completedOverrides.has(task.dependency)) return false;
+        return inventory.some(i => i.id === task.dependency && i.status !== 'completed');
+      };
 
-    if (aIsBlocked && !bIsBlocked) return 1;
-    if (!aIsBlocked && bIsBlocked) return -1;
+      const aIsBlocked = isBlocked(a);
+      const bIsBlocked = isBlocked(b);
 
-    if (a.priority !== b.priority) {
-      return (a.priority || 2) - (b.priority || 2);
-    }
-    return a.duration - b.duration;
+      if (aIsBlocked && !bIsBlocked) return 1;
+      if (!aIsBlocked && bIsBlocked) return -1;
+
+      if (a.priority !== b.priority) {
+        return (a.priority || 2) - (b.priority || 2);
+      }
+      return a.duration - b.duration;
+    };
   };
 
   useEffect(() => {
@@ -123,7 +131,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
         pending = pending.filter(t => matchingZones.includes(t.zone));
     }
 
-    const sorted = pending.sort(compareTasks);
+    const sorted = pending.sort(createTaskComparator());
 
     let accumulatedTime = 0;
     const queue: Task[] = [];
@@ -221,6 +229,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
 
   const currentTask = sessionTasks[currentTaskIndex];
   const nextTasks = sessionTasks.slice(currentTaskIndex + 1);
+  const futureComparator = createTaskComparator(new Set(currentTask ? [currentTask.id] : []));
   const conditionalNextTasks = inventory
     .filter(t =>
       t.status === 'pending' &&
@@ -230,7 +239,12 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
       (!activeZone || t.zone === activeZone) &&
       (!activeLevel || zones.find(z => z.name === t.zone)?.level === activeLevel)
     )
-    .sort(compareTasks);
+    .sort(futureComparator);
+
+  const upcomingTasks = [
+    ...nextTasks.map(task => ({ task, isUnlock: false })),
+    ...conditionalNextTasks.map(task => ({ task, isUnlock: true }))
+  ].sort((a, b) => futureComparator(a.task, b.task));
 
   const taskImageUrl = getTaskImagePublicUrl(currentTask?.image_url);
   
@@ -352,28 +366,29 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                 <div>
                     <h4 className="text-[10px] font-bold text-stone-600 uppercase tracking-[0.28em] mb-4 ml-2">Up Next</h4>
                     <div className="space-y-3">
-                        {nextTasks.map((t) => (
-                            <div key={t.id} className="flex justify-between items-center p-4 sm:p-5 rounded-2xl bg-white/90 border border-[color:var(--border)] shadow-sm text-sm text-stone-800 hover:border-emerald-300 transition-colors">
-                                <span className="truncate flex-1 font-medium">{t.label}</span>
-                                <div className="flex items-center gap-3">
-                                    {t.recurrence > 0 && <RotateCw className="w-3 h-3 text-emerald-400" />}
-                                    <PriorityBadge priority={t.priority || 2} />
-                                    <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded border w-12 text-center ${getDurationStyles(t.duration)}`}>
-                                        {t.duration}m
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
-                        {conditionalNextTasks.map((t) => (
-                            <div key={t.id} className="p-4 sm:p-5 rounded-2xl bg-white border border-dashed border-emerald-300/80 shadow-sm text-sm text-stone-700">
-                                <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-700 mb-2 uppercase tracking-[0.18em]">
-                                    <Lock className="w-4 h-4" /> Unlocks next
-                                </div>
-                                <div className="flex justify-between items-center gap-3 opacity-80">
-                                    <div className="flex flex-col flex-1 min-w-0">
-                                        <span className="truncate font-medium">{t.label}</span>
-                                        <span className="text-[11px] text-stone-500">Becomes next after this task</span>
+                        {upcomingTasks.map(({ task: t, isUnlock }) => (
+                            isUnlock ? (
+                                <div key={t.id} className="p-4 sm:p-5 rounded-2xl bg-white border border-dashed border-emerald-300/80 shadow-sm text-sm text-stone-700">
+                                    <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-700 mb-2 uppercase tracking-[0.18em]">
+                                        <Lock className="w-4 h-4" /> Unlocks next
                                     </div>
+                                    <div className="flex justify-between items-center gap-3 opacity-80">
+                                        <div className="flex flex-col flex-1 min-w-0">
+                                            <span className="truncate font-medium">{t.label}</span>
+                                            <span className="text-[11px] text-stone-500">Becomes next after this task</span>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            {t.recurrence > 0 && <RotateCw className="w-3 h-3 text-emerald-400" />}
+                                            <PriorityBadge priority={t.priority || 2} />
+                                            <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded border w-12 text-center ${getDurationStyles(t.duration)}`}>
+                                                {t.duration}m
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div key={t.id} className="flex justify-between items-center p-4 sm:p-5 rounded-2xl bg-white/90 border border-[color:var(--border)] shadow-sm text-sm text-stone-800 hover:border-emerald-300 transition-colors">
+                                    <span className="truncate flex-1 font-medium">{t.label}</span>
                                     <div className="flex items-center gap-3">
                                         {t.recurrence > 0 && <RotateCw className="w-3 h-3 text-emerald-400" />}
                                         <PriorityBadge priority={t.priority || 2} />
@@ -382,9 +397,9 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                                         </span>
                                     </div>
                                 </div>
-                            </div>
+                            )
                         ))}
-                        {nextTasks.length === 0 && conditionalNextTasks.length === 0 && (
+                        {upcomingTasks.length === 0 && (
                             <div className="text-sm text-stone-500 italic text-center py-6 bg-white/70 rounded-2xl border border-dashed border-[color:var(--border)]">No further tasks in queue.</div>
                         )}
                     </div>
