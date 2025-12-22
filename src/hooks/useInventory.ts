@@ -37,10 +37,17 @@ export function useInventory() {
         setLoading(true);
         
         try {
-            // Fetch Zones
-            const { data: zoneData } = await supabase.from('zones').select('name, level');
-            if (zoneData) {
-                setZones(zoneData.map((z: { name: string; level?: Level }) => ({
+            // Fetch Zones (with legacy fallback if level column doesn't exist yet)
+            const { data: zoneData, error: zoneError } = await supabase.from('zones').select('name, level');
+
+            if (zoneError) {
+                // Column might not exist for older databases; fall back to the legacy shape
+                const { data: legacyZoneData } = await supabase.from('zones').select('name');
+                if (legacyZoneData) {
+                    setZones(legacyZoneData.map((z: { name: string }) => ({ name: z.name, level: 'Lower Level' })));
+                }
+            } else if (zoneData) {
+                setZones(zoneData.map((z: { name: string; level?: Level | null }) => ({
                     name: z.name,
                     level: z.level === 'Upper Level' ? 'Upper Level' : 'Lower Level'
                 })));
