@@ -6,12 +6,15 @@ import { InventoryView } from './components/InventoryView';
 import { LoginView } from './components/LoginView';
 import { Home, LogOut } from 'lucide-react';
 import { supabase } from './lib/supabase';
+import { Level } from './types';
 
 export default function App() {
   const [view, setView] = useState<'dashboard' | 'execute' | 'inventory'>('dashboard');
   const [filterZone, setFilterZone] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState(30);
   const [activeZone, setActiveZone] = useState<string | null>(null);
+  const [sessionLevel, setSessionLevel] = useState<Level | null>(null);
+  const [showLevelPrompt, setShowLevelPrompt] = useState(false);
   
   const {
     inventory,
@@ -24,7 +27,8 @@ export default function App() {
     loading,
     updateTask,
     exportData,
-    importData
+    importData,
+    updateZoneLevel
   } = useInventory();
 
   if (loading) {
@@ -41,6 +45,32 @@ export default function App() {
 
   const handleLogout = async () => {
       await supabase.auth.signOut();
+  };
+
+  const handleStartSession = () => {
+      setActiveZone(null);
+
+      const uniqueLevels = Array.from(new Set(zones.map(z => z.level)));
+
+      if (uniqueLevels.length === 0) {
+          setSessionLevel('Lower Level');
+          setView('execute');
+          return;
+      }
+
+      if (uniqueLevels.length === 1) {
+          setSessionLevel(uniqueLevels[0]);
+          setView('execute');
+          return;
+      }
+
+      setShowLevelPrompt(true);
+  };
+
+  const handleSelectLevel = (level: Level) => {
+      setSessionLevel(level);
+      setShowLevelPrompt(false);
+      setView('execute');
   };
 
   return (
@@ -89,43 +119,74 @@ export default function App() {
             {view === 'dashboard' && (
                 <DashboardView
                 inventory={inventory}
-                onSwitchView={setView}
                 onFilterZone={(z) => { setFilterZone(z); setView('inventory'); }}
                 selectedTime={selectedTime}
                 setSelectedTime={setSelectedTime}
                 onTackleArea={(zone) => {
                     setSelectedTime(9999);
+                    const matchedRoom = zones.find(r => r.name === zone);
+                    setSessionLevel(matchedRoom?.level ?? 'Lower Level');
                     setActiveZone(zone);
                     setView('execute');
                 }}
+                onStartSession={handleStartSession}
                 />
             )}
       {view === 'execute' && (
           <ExecutionView
               inventory={inventory}
-                onBack={() => { setView('dashboard'); setActiveZone(null); }}
+                onBack={() => { setView('dashboard'); setActiveZone(null); setSessionLevel(null); }}
                 timeWindow={selectedTime}
                 activeZone={activeZone}
                 onUpdateTask={updateTask}
+                rooms={zones}
+                activeLevel={sessionLevel}
             />
         )}
             {view === 'inventory' && (
-                <InventoryView 
-                    inventory={inventory} 
-                    onAddTask={addTask} 
-                    onDeleteTask={deleteTask} 
+                <InventoryView
+                    inventory={inventory}
+                    onAddTask={addTask}
+                    onDeleteTask={deleteTask}
                     onAddZone={addZone}
                     onDeleteZone={deleteZone}
+                    onUpdateZoneLevel={updateZoneLevel}
                     onUpdateTask={updateTask}
                     onExport={exportData}
                     onImport={importData}
-                    availableZones={zones} 
-                    onBack={() => setView('dashboard')} 
-                    initialFilter={filterZone} 
+                    availableZones={zones}
+                    onBack={() => setView('dashboard')}
+                    initialFilter={filterZone}
                 />
             )}
           </div>
       </div>
+
+      {showLevelPrompt && (
+          <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+              <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 space-y-4 border border-stone-100 animate-in zoom-in-95">
+                  <div className="space-y-1">
+                      <p className="text-xs font-bold uppercase tracking-[0.26em] text-stone-500">Pick a Level</p>
+                      <h3 className="text-2xl font-serif text-stone-900">Where are you cleaning?</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                      <button
+                          onClick={() => handleSelectLevel('Upper Level')}
+                          className="py-3 rounded-2xl font-bold bg-gradient-to-br from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-200 active:scale-95"
+                      >
+                          Upstairs
+                      </button>
+                      <button
+                          onClick={() => handleSelectLevel('Lower Level')}
+                          className="py-3 rounded-2xl font-bold bg-white border border-[color:var(--border)] hover:border-emerald-300 text-stone-800 shadow-sm active:scale-95"
+                      >
+                          Downstairs
+                      </button>
+                  </div>
+                  <button onClick={() => setShowLevelPrompt(false)} className="w-full text-sm text-stone-500 hover:text-stone-800 font-semibold py-2" aria-label="Cancel level selection">Cancel</button>
+              </div>
+          </div>
+      )}
     </div>
   );
 }
