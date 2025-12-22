@@ -1,5 +1,11 @@
 export type Priority = 1 | 2 | 3;
 export type Status = 'pending' | 'completed' | 'blocked';
+export type Level = 'Upper Level' | 'Lower Level';
+
+export interface Room {
+  name: string;
+  level: Level;
+}
 
 export interface Task {
   id: string;

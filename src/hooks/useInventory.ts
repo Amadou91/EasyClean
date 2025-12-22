@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Task } from '../types';
+import { Level, Room, Task } from '../types';
 import { User } from '@supabase/supabase-js';
 
 export function useInventory() {
     const [inventory, setInventory] = useState<Task[]>([]);
-    const [zones, setZones] = useState<string[]>([]);
+    const [zones, setZones] = useState<Room[]>([]);
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<User | null>(null);
 
@@ -38,8 +38,13 @@ export function useInventory() {
         
         try {
             // Fetch Zones
-            const { data: zoneData } = await supabase.from('zones').select('name');
-            if (zoneData) setZones(zoneData.map((z: { name: string }) => z.name));
+            const { data: zoneData } = await supabase.from('zones').select('name, level');
+            if (zoneData) {
+                setZones(zoneData.map((z: { name: string; level?: Level }) => ({
+                    name: z.name,
+                    level: z.level === 'Upper Level' ? 'Upper Level' : 'Lower Level'
+                })));
+            }
 
             // Fetch Tasks
             const { data: taskData, error } = await supabase
@@ -138,21 +143,28 @@ export function useInventory() {
         await supabase.from('tasks').delete().eq('id', id);
     };
 
-    const addZone = async (name: string) => {
+    const addZone = async (name: string, level: Level) => {
         if (!user) return;
-        setZones(prev => [...prev, name]);
-        await supabase.from('zones').insert([{ name }]);
+        const newRoom: Room = { name, level };
+        setZones(prev => [...prev, newRoom]);
+        await supabase.from('zones').insert([{ name, level }]);
+    };
+
+    const updateZoneLevel = async (name: string, level: Level) => {
+        if (!user) return;
+        setZones(prev => prev.map(z => z.name === name ? { ...z, level } : z));
+        await supabase.from('zones').update({ level }).eq('name', name);
     };
 
     const deleteZone = async (name: string) => {
         if (window.confirm(`Delete "${name}" zone? Tasks will remain but the filter will be removed.`)) {
-            setZones(prev => prev.filter(z => z !== name));
+            setZones(prev => prev.filter(z => z.name !== name));
             await supabase.from('zones').delete().eq('name', name);
         }
     };
 
     const exportData = () => {
-        const data = { inventory, zones, version: "3.2" };
+        const data = { inventory, zones, version: "3.3" };
         const jsonString = `data:text/json;chatset=utf-8,${encodeURIComponent(JSON.stringify(data))}`;
         const link = document.createElement("a");
         link.href = jsonString;
@@ -173,11 +185,17 @@ export function useInventory() {
                 
                 // 1. Sync Zones
                 if (parsed.zones && Array.isArray(parsed.zones)) {
-                    const newZones = parsed.zones.filter((z: string) => !zones.includes(z));
+                    const incomingRooms: Room[] = parsed.zones.map((z: Room | string) =>
+                        typeof z === 'string'
+                            ? { name: z, level: 'Lower Level' }
+                            : { name: z.name, level: z.level === 'Upper Level' ? 'Upper Level' : 'Lower Level' }
+                    );
+
+                    const newZones = incomingRooms.filter((z) => !zones.find(existing => existing.name === z.name));
                     setZones(prev => [...prev, ...newZones]);
-                    
+
                     if (newZones.length > 0) {
-                        const zoneInserts = newZones.map((name: string) => ({ name }));
+                        const zoneInserts = newZones.map((room: Room) => ({ name: room.name, level: room.level }));
                         await supabase.from('zones').insert(zoneInserts);
                     }
                 }
@@ -233,5 +251,5 @@ export function useInventory() {
         reader.readAsText(file);
     };
 
-    return { inventory, setInventory, zones, user, loading, addTask, updateTask, deleteTask, addZone, deleteZone, exportData, importData };
+    return { inventory, setInventory, zones, user, loading, addTask, updateTask, deleteTask, addZone, deleteZone, updateZoneLevel, exportData, importData };
 }
