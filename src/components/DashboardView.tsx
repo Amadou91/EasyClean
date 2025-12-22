@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Task, Zone, Level } from '../types';
 import { Clock, Check, Play, Edit, Zap, ArrowUp, ArrowDown, X } from 'lucide-react';
+import { isTaskDue } from '../lib/taskUtils';
 
 interface DashboardViewProps {
   inventory: Task[];
@@ -326,7 +327,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                     </span>
                                 </div>
                                 <div className="space-y-3">
-                                    {tasks.map(task => (
+                                    {tasks.map(task => {
+                                        const due = isTaskDue(task);
+                                        return (
                                         <div
                                             key={task.id}
                                             className="flex items-start justify-between gap-4 p-3 rounded-2xl bg-white/80 border border-[color:var(--border)] shadow-[0_10px_30px_-24px_rgba(12,74,57,0.55)]"
@@ -337,12 +340,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                                     <Clock className="w-3 h-3 text-emerald-600" />
                                                     {task.duration} min
                                                 </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-[10px] font-bold uppercase tracking-[0.18em] px-2 py-0.5 rounded-full border ${
+                                                        due
+                                                            ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                    }`}>
+                                                        {due ? 'Overdue' : 'On cadence'}
+                                                    </span>
+                                                    {task.recurrence > 0 && (
+                                                        <span className="text-[10px] text-stone-500 font-semibold">Every {task.recurrence}d</span>
+                                                    )}
+                                                </div>
                                             </div>
                                             <span className={`text-[11px] font-bold uppercase tracking-[0.2em] px-3 py-1 rounded-full border ${getPriorityStyle(task.priority)}`}>
                                                 Priority {task.priority}
                                             </span>
                                         </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         ))}
