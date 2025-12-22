@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Task } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Level, Room, Task } from '../types';
 import { Check, Clock, ArrowLeft, RotateCw, SkipForward, Lock } from 'lucide-react';
 
 interface ExecutionViewProps {
@@ -8,6 +8,8 @@ interface ExecutionViewProps {
   timeWindow: number;
   activeZone: string | null;
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
+  rooms: Room[];
+  activeLevel: Level | null;
 }
 
 const PriorityBadge = ({ priority }: { priority: number }) => {
@@ -24,13 +26,18 @@ const PriorityBadge = ({ priority }: { priority: number }) => {
 };
 
 export const ExecutionView: React.FC<ExecutionViewProps> = ({
-  inventory, onBack, timeWindow, activeZone, onUpdateTask
+  inventory, onBack, timeWindow, activeZone, onUpdateTask, rooms, activeLevel
 }) => {
   const [sessionTasks, setSessionTasks] = useState<Task[]>([]);
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
   const [noTasksFound, setNoTasksFound] = useState(false);
   const [skippedTaskIds, setSkippedTaskIds] = useState<string[]>([]);
   const [sessionCompletedIds, setSessionCompletedIds] = useState<string[]>([]);
+
+  const roomLevelMap = useMemo(() => rooms.reduce<Record<string, Level>>((acc, room) => {
+      acc[room.name] = room.level;
+      return acc;
+  }, {}), [rooms]);
 
   const compareTasks = (a: Task, b: Task) => {
     const aIsBlocked = inventory.some(i => i.id === a.dependency && i.status !== 'completed');
@@ -54,6 +61,13 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
     const remainingTime = Math.max(timeWindow - completedDuration, 0);
 
     let pending = inventory.filter(t => t.status === 'pending' && !skippedTaskIds.includes(t.id));
+
+    if (activeLevel) {
+        pending = pending.filter(t => {
+            const level = roomLevelMap[t.zone] ?? 'Lower Level';
+            return level === activeLevel;
+        });
+    }
 
     if (activeZone) {
         pending = pending.filter(t => t.zone === activeZone);
@@ -82,7 +96,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
 
     setSessionTasks(queue);
     setCurrentTaskIndex(0);
-  }, [inventory, timeWindow, activeZone, skippedTaskIds, sessionCompletedIds]);
+  }, [inventory, timeWindow, activeZone, skippedTaskIds, sessionCompletedIds, activeLevel, roomLevelMap]);
 
   // Helper to determine duration color styles
   const getDurationStyles = (duration: number) => {
@@ -109,7 +123,8 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
         t.status === 'pending' &&
         !skippedTaskIds.includes(t.id) &&
         !sessionTasks.find(st => st.id === t.id) &&
-        !inventory.some(i => i.id === t.dependency && i.status !== 'completed')
+        !inventory.some(i => i.id === t.dependency && i.status !== 'completed') &&
+        (!activeLevel || (roomLevelMap[t.zone] ?? 'Lower Level') === activeLevel)
     );
 
     if (candidates.length === 0) {

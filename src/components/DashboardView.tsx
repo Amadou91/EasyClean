@@ -4,11 +4,11 @@ import { Clock, Check, Play, Edit, Zap } from 'lucide-react';
 
 interface DashboardViewProps {
   inventory: Task[];
-  onSwitchView: (view: 'dashboard' | 'execute' | 'inventory') => void;
   onFilterZone: (zone: string) => void;
   selectedTime: number;
   setSelectedTime: (time: number) => void;
   onTackleArea: (zone: string) => void;
+  onStartSession: () => void;
 }
 
 const Countdown = () => {
@@ -72,7 +72,7 @@ const Countdown = () => {
 };
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
-  inventory, onSwitchView, onFilterZone, selectedTime, setSelectedTime, onTackleArea
+  inventory, onFilterZone, selectedTime, setSelectedTime, onTackleArea, onStartSession
 }) => {
   const totalTasks = inventory.length;
   const completedTasks = inventory.filter(t => t.status === 'completed').length;
@@ -162,7 +162,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
                 <div className="md:w-auto w-full">
                     <button
-                        onClick={() => onSwitchView('execute')}
+                        onClick={onStartSession}
                         className="w-full md:w-auto px-10 py-4 text-base rounded-full font-bold flex items-center gap-2 justify-center transition-all active:scale-[0.98] bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-700 hover:shadow-[0_20px_55px_-28px_rgba(12,74,57,0.9)] text-white shadow-lg"
                     >
                         <Zap className="w-5 h-5 fill-current" /> Start Cleaning
