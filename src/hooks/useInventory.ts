@@ -2,6 +2,12 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Task } from '../types';
 import { User } from '@supabase/supabase-js';
+import { TASK_IMAGE_BUCKET } from '../lib/storage';
+
+type UpdateOptions = {
+    imageFile?: File | null;
+    removeImage?: boolean;
+};
 
 export function useInventory() {
     const [inventory, setInventory] = useState<Task[]>([]);
@@ -79,25 +85,48 @@ export function useInventory() {
         }
     };
 
+    const uploadTaskImage = async (taskId: string, file: File, previousPath?: string | null) => {
+        const extension = file.name.split('.').pop();
+        const path = `${user?.id || 'public'}/${taskId}.${extension || 'jpg'}`;
+
+        if (previousPath && previousPath !== path) {
+            await supabase.storage.from(TASK_IMAGE_BUCKET).remove([previousPath]);
+        }
+
+        const { data, error } = await supabase.storage.from(TASK_IMAGE_BUCKET).upload(path, file, { upsert: true });
+        return { path: data?.path || path, error };
+    };
+
+    const removeTaskImage = async (path?: string | null) => {
+        if (!path) return;
+        await supabase.storage.from(TASK_IMAGE_BUCKET).remove([path]);
+    };
+
     // Helper to reset a task in DB
     const resetTask = async (id: string) => {
-        return supabase.from('tasks').update({ 
-            status: 'pending', 
-            completed_at: null, 
-            completed_by: null 
+        return supabase.from('tasks').update({
+            status: 'pending',
+            completed_at: null,
+            completed_by: null
         }).eq('id', id);
     };
 
     // 3. Actions
-    const addTask = async (task: Task) => {
+    const addTask = async (task: Task, imageFile?: File | null) => {
         if (!user) return;
-        
-        // Optimistic Update
-        const tempId = Math.random().toString();
-        const newTask = { ...task, id: tempId, user_id: user.id, created_at: new Date().toISOString() };
-        setInventory(prev => [newTask, ...prev]);
+
+        const taskId = task.id || crypto.randomUUID();
+        const optimisticTask: Task = {
+            ...task,
+            id: taskId,
+            user_id: user.id,
+            created_at: new Date().toISOString(),
+            image_url: null
+        };
+        setInventory(prev => [optimisticTask, ...prev]);
 
         const { data, error } = await supabase.from('tasks').insert([{
+            id: taskId,
             zone: task.zone,
             label: task.label,
             duration: task.duration,
@@ -105,35 +134,70 @@ export function useInventory() {
             recurrence: task.recurrence,
             status: 'pending',
             dependency: task.dependency, // Added dependency support
-            user_id: user.id // Track who created it
+            user_id: user.id, // Track who created it
+            image_url: null
         }]).select().single();
 
         if (!error && data) {
-            // Replace temp ID with real ID
-            setInventory(prev => prev.map(t => t.id === tempId ? data as Task : t));
+            let imagePath = data.image_url;
+
+            if (imageFile) {
+                const uploadResult = await uploadTaskImage(taskId, imageFile);
+                if (!uploadResult.error) {
+                    imagePath = uploadResult.path;
+                    await supabase.from('tasks').update({ image_url: imagePath }).eq('id', taskId);
+                }
+            }
+
+            setInventory(prev => prev.map(t => t.id === taskId ? { ...(data as Task), image_url: imagePath } : t));
         } else {
             // Revert if error
-            setInventory(prev => prev.filter(t => t.id !== tempId));
+            setInventory(prev => prev.filter(t => t.id !== taskId));
             alert("Failed to add task");
         }
     };
 
-    const updateTask = async (id: string, updates: Partial<Task>) => {
+    const updateTask = async (id: string, updates: Partial<Task>, options: UpdateOptions = {}) => {
         if (!user) return;
 
-        setInventory(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
-        
+        const existing = inventory.find(t => t.id === id);
+        const { imageFile, removeImage } = options;
+
+        let nextImage = existing?.image_url ?? null;
+        if (removeImage) nextImage = null;
+
+        setInventory(prev => prev.map(t => t.id === id ? { ...t, ...updates, image_url: nextImage } : t));
+
         // If marking complete, add timestamp and user
-        const dbUpdates: Partial<Task> & { completed_at?: string; completed_by?: string } = { ...updates };
+        const dbUpdates: Partial<Task> & { completed_at?: string | null; completed_by?: string | null } = { ...updates };
         if (updates.status === 'completed') {
             dbUpdates.completed_at = new Date().toISOString();
             dbUpdates.completed_by = user.id; // Track who did it
         }
 
+        if (removeImage && existing?.image_url) {
+            await removeTaskImage(existing.image_url);
+            dbUpdates.image_url = null;
+        }
+
+        if (imageFile) {
+            const uploadResult = await uploadTaskImage(id, imageFile, existing?.image_url);
+            if (!uploadResult.error) {
+                nextImage = uploadResult.path;
+                dbUpdates.image_url = nextImage;
+            }
+        }
+
         await supabase.from('tasks').update(dbUpdates).eq('id', id);
+        setInventory(prev => prev.map(t => t.id === id ? { ...t, ...updates, image_url: nextImage } : t));
     };
 
     const deleteTask = async (id: string) => {
+        const taskToDelete = inventory.find(t => t.id === id);
+        if (taskToDelete?.image_url) {
+            await removeTaskImage(taskToDelete.image_url);
+        }
+
         setInventory(prev => prev.filter(t => t.id !== id));
         await supabase.from('tasks').delete().eq('id', id);
     };
