@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Task, Priority, Status } from '../types';
+import { Task, Priority, Status, Zone, Level } from '../types';
 import { ArrowLeft, Trash, Plus, Repeat, Edit, Check, X, AlertTriangle, Download, Upload, Link, Image as ImageIcon, Maximize2 } from 'lucide-react';
 import { getTaskImagePublicUrl } from '../lib/storage';
 
@@ -7,8 +7,8 @@ interface InventoryViewProps {
   inventory: Task[];
   onBack: () => void;
   initialFilter?: string | null;
-  availableZones: string[];
-  onAddZone: (zone: string) => void;
+  availableZones: Zone[];
+  onAddZone: (zone: string, level: Level) => void;
   onDeleteZone: (zone: string) => void;
   onAddTask: (task: Task, imageFile?: File | null) => void;
   onUpdateTask: (id: string, updates: Partial<Task>, options?: { imageFile?: File | null; removeImage?: boolean }) => void;
@@ -30,16 +30,12 @@ const PriorityBadge = ({ priority }: { priority: number }) => {
     );
 };
 
-const getZoneColor = (zone: string, alpha = 1) => {
-    if (!zone) return `rgba(120, 113, 108, ${alpha})`;
-
-    // Generate a stable, unique-ish hue for each zone name
+const getZoneColor = (zoneName: string, alpha = 1) => {
+    if (!zoneName) return `rgba(120, 113, 108, ${alpha})`;
     let hash = 0;
-    for (let i = 0; i < zone.length; i++) {
-        hash = (hash * 31 + zone.charCodeAt(i)) % 360;
+    for (let i = 0; i < zoneName.length; i++) {
+        hash = (hash * 31 + zoneName.charCodeAt(i)) % 360;
     }
-
-    // Use HSL to ensure vivid, distinct colors while allowing transparency control via alpha
     return `hsla(${hash}, 70%, 50%, ${alpha})`;
 };
 
@@ -49,23 +45,21 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingZone, setIsAddingZone] = useState(false);
   const [newZoneName, setNewZoneName] = useState("");
+  const [newZoneLevel, setNewZoneLevel] = useState<Level>('downstairs'); // New state for zone creation
   const [filterZone, setFilterZone] = useState(initialFilter || 'All');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [editingRecurrenceId, setEditingRecurrenceId] = useState<string | null>(null);
-  const [tempRecurrence, setTempRecurrence] = useState<number>(0);
   const [newItemImage, setNewItemImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [removeImage, setRemoveImage] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   const lastZoneSelectionRef = useRef<number>(0);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
-  const defaultZone = availableZones.length > 0 ? availableZones[0] : '';
-  const startZone = (initialFilter && initialFilter !== 'All') ? initialFilter : defaultZone;
+  const defaultZoneName = availableZones.length > 0 ? availableZones[0].name : '';
+  const startZone = (initialFilter && initialFilter !== 'All') ? initialFilter : defaultZoneName;
 
   const [newItem, setNewItem] = useState({
       zone: startZone,
@@ -78,9 +72,9 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
 
   const [isMobile, setIsMobile] = useState(false);
 
+  // Dependency mapping logic...
   const dependencyOptions = useMemo(() => {
       const tasksByZone: Record<string, Task[]> = {};
-
       inventory
           .filter(t => t.id !== editingId)
           .forEach(task => {
@@ -90,7 +84,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               }
               tasksByZone[zone].push(task);
           });
-
       return Object.entries(tasksByZone)
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([zone, tasks]) => ({
@@ -99,12 +92,11 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           }));
   }, [inventory, editingId]);
 
-  // Reset form when opening/closing or changing filter
   useEffect(() => {
       if (!isAdding) {
           setEditingId(null);
           setNewItem({
-            zone: filterZone !== 'All' ? filterZone : (availableZones[0] || ''),
+            zone: filterZone !== 'All' ? filterZone : (availableZones[0]?.name || ''),
             label: '',
             duration: 10,
             priority: 2,
@@ -125,7 +117,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               setIsMobile(pointerCoarse || smallViewport);
           }
       };
-
       checkMobile();
       window.addEventListener('resize', checkMobile);
       return () => window.removeEventListener('resize', checkMobile);
@@ -140,16 +131,13 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           return tasks.sort((a, b) => {
               const priorityA = a.priority || 3;
               const priorityB = b.priority || 3;
-
               if (priorityA !== priorityB) return priorityA - priorityB;
               return a.duration - b.duration;
           });
       }
-
       return tasks;
   }, [filterZone, inventory]);
 
-  // Helper to determine duration color styles
   const getDurationStyles = (duration: number) => {
     if (duration <= 15) return "bg-emerald-50 text-emerald-700 border-emerald-200";
     if (duration <= 30) return "bg-teal-50 text-teal-700 border-teal-200";
@@ -176,11 +164,10 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               dependency: newItem.dependency || null,
               lastCompleted: null,
               created_at: new Date().toISOString(),
-              user_id: '' // Managed by hook
+              user_id: '' 
           } as Task;
           onAddTask(taskToAdd, newItemImage);
       }
-
       setIsAdding(false);
       setNewItemImage(null);
       setImagePreview(null);
@@ -203,15 +190,9 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       setNewItemImage(null);
   };
 
-  const handleDeleteClick = (id: string) => {
-      setDeletingId(id);
-  };
-
+  const handleDeleteClick = (id: string) => { setDeletingId(id); };
   const confirmDelete = () => {
-      if (deletingId) {
-          onDeleteTask(deletingId);
-          setDeletingId(null);
-      }
+      if (deletingId) { onDeleteTask(deletingId); setDeletingId(null); }
   };
 
   const handleToggleStatus = (id: string, currentStatus: string) => {
@@ -220,17 +201,13 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   };
 
   const handleCreateZone = () => {
-      if(newZoneName && !availableZones.includes(newZoneName)){
-          onAddZone(newZoneName);
+      if(newZoneName && !availableZones.some(z => z.name === newZoneName)){
+          onAddZone(newZoneName, newZoneLevel);
           setNewItem(prev => ({...prev, zone: newZoneName}));
           setIsAddingZone(false);
           setNewZoneName("");
+          setNewZoneLevel('downstairs'); // reset default
       }
-  };
-
-  const startEditingRecurrence = (task: Task) => {
-      setEditingRecurrenceId(task.id);
-      setTempRecurrence(task.recurrence);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -249,20 +226,10 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       if (imageInputRef.current) imageInputRef.current.value = '';
   };
 
-  const saveRecurrence = (id: string) => {
-      onUpdateTask(id, { recurrence: tempRecurrence });
-      setEditingRecurrenceId(null);
-  };
-
-  const handleImportClick = () => {
-      fileInputRef.current?.click();
-  };
-
+  const handleImportClick = () => { fileInputRef.current?.click(); };
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (file) {
-          onImport(file);
-      }
+      if (file) onImport(file);
       if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -283,43 +250,37 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                   <button onClick={handleImportClick} className="text-stone-500 hover:text-emerald-700 transition-colors p-2 hover:bg-white rounded-xl border border-transparent hover:border-[color:var(--border)]" title="Import Tasks">
                       <Upload className="w-5 h-5" />
                   </button>
-                  <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileChange}
-                      className="hidden"
-                      accept=".json"
-                  />
+                  <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
               </div>
           </div>
 
           <div className="flex gap-2 overflow-x-auto overflow-y-visible pt-1 pb-4 mb-2 no-scrollbar px-1">
               <button
                   onClick={() => setFilterZone('All')}
-                  className={`px-5 py-2 rounded-full text-xs font-bold transition-all ${filterZone === 'All' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200 scale-105' : 'bg-white text-stone-700 border border-[color:var(--border)] hover:border-emerald-300'}`}
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${filterZone === 'All' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200 scale-105' : 'bg-white text-stone-700 border border-[color:var(--border)] hover:border-emerald-300'}`}
               >
                   All
               </button>
               {availableZones.map(z => (
                   <button
-                      key={z}
+                      key={z.name}
                       onClick={() => {
-                          setFilterZone(z);
+                          setFilterZone(z.name);
                           lastZoneSelectionRef.current = Date.now();
                       }}
-                      className={`group flex items-center gap-2 px-5 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${filterZone === z ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200 scale-105 pr-3' : 'bg-white text-stone-700 border border-[color:var(--border)] hover:border-emerald-300'}`}
+                      className={`group flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${filterZone === z.name ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200 scale-105 pr-2' : 'bg-white text-stone-700 border border-[color:var(--border)] hover:border-emerald-300'}`}
                   >
-                      {z}
-                      {filterZone === z && (
+                      {z.name}
+                      {filterZone === z.name && (
                         <span
                           onClick={(e) => {
                              e.stopPropagation();
                              if (Date.now() - lastZoneSelectionRef.current < 300) return;
-                             onDeleteZone(z);
+                             onDeleteZone(z.name);
                              setFilterZone('All');
                           }}
-                          className="ml-1 p-1 bg-emerald-600 rounded-full hover:bg-red-500 transition-colors cursor-pointer"
-                          title={`Delete ${z}`}
+                          className="ml-1 p-0.5 bg-emerald-600 rounded-full hover:bg-red-500 transition-colors cursor-pointer"
+                          title={`Delete ${z.name}`}
                         >
                             <X className="w-3 h-3 text-white" />
                         </span>
@@ -355,33 +316,11 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                     <PriorityBadge priority={task.priority || 2} />
                                     {task.recurrence > 0 && (
                                         <div
-                                            className="group/recurrence relative text-emerald-700 flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded border border-[color:var(--border)] hover:bg-emerald-100 transition-colors cursor-pointer"
-                                            title={`Repeats every ${task.recurrence} days`}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                startEditingRecurrence(task);
-                                            }}
+                                            className="text-emerald-700 flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded border border-[color:var(--border)]"
+                                            title={`Reappears at 7:00 AM every ${task.recurrence} days`}
                                         >
-                                            {editingRecurrenceId === task.id ? (
-                                                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                                                    <input
-                                                        type="number"
-                                                        className="w-8 text-center bg-white border border-emerald-300 rounded text-xs p-0 h-4"
-                                                        value={tempRecurrence}
-                                                        onChange={(e) => setTempRecurrence(parseInt(e.target.value) || 0)}
-                                                        onBlur={() => saveRecurrence(task.id)}
-                                                        onKeyDown={(e) => e.key === 'Enter' && saveRecurrence(task.id)}
-                                                        autoFocus
-                                                        onClick={(e) => e.stopPropagation()}
-                                                    />
-                                                    <span className="text-[9px]">d</span>
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <Repeat className="w-3 h-3" />
-                                                    <span className="border-b border-dashed border-emerald-400/50">{task.recurrence}d</span>
-                                                </>
-                                            )}
+                                            <Repeat className="w-3 h-3" />
+                                            <span>{task.recurrence}d</span>
                                         </div>
                                     )}
                                     {dependencyTask && (
@@ -444,19 +383,38 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                       </div>
                       
                       <div className="space-y-5">
+                          {/* Zone Selection with new "Add Zone" UI that supports Levels */}
                           <div className="space-y-2">
                               <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Zone / Area</label>
                               {isAddingZone ? (
-                                  <div className="flex gap-2 animate-in slide-in-from-left-2 duration-200">
+                                  <div className="space-y-3 animate-in slide-in-from-left-2 duration-200 p-3 bg-stone-50 rounded-xl border border-stone-200">
                                       <input 
-                                          className="flex-1 bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all font-medium"
-                                          placeholder="Name of new area..."
+                                          className="w-full bg-white border border-stone-200 rounded-lg p-2.5 text-stone-900 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all font-medium"
+                                          placeholder="Area Name (e.g. Master Bath)"
                                           value={newZoneName}
                                           onChange={e => setNewZoneName(e.target.value)}
                                           autoFocus
                                       />
-                                      <button onClick={handleCreateZone} className="px-4 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-bold shadow-sm transition-colors">Save</button>
-                                      <button onClick={() => setIsAddingZone(false)} className="px-3 text-stone-400 hover:text-stone-600 bg-stone-50 rounded-xl border border-stone-200"><X className="w-4 h-4" /></button>
+                                      <div className="flex gap-2">
+                                          <button 
+                                            type="button"
+                                            onClick={() => setNewZoneLevel('upstairs')}
+                                            className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-colors ${newZoneLevel === 'upstairs' ? 'bg-emerald-100 border-emerald-300 text-emerald-800' : 'bg-white border-stone-200 text-stone-600'}`}
+                                          >
+                                              Upstairs
+                                          </button>
+                                          <button 
+                                            type="button"
+                                            onClick={() => setNewZoneLevel('downstairs')}
+                                            className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-colors ${newZoneLevel === 'downstairs' ? 'bg-emerald-100 border-emerald-300 text-emerald-800' : 'bg-white border-stone-200 text-stone-600'}`}
+                                          >
+                                              Downstairs
+                                          </button>
+                                      </div>
+                                      <div className="flex gap-2 mt-2">
+                                          <button onClick={handleCreateZone} className="flex-1 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-bold shadow-sm transition-colors">Save Zone</button>
+                                          <button onClick={() => setIsAddingZone(false)} className="px-3 text-stone-500 hover:text-stone-700 bg-white rounded-lg border border-stone-200">Cancel</button>
+                                      </div>
                                   </div>
                               ) : (
                                   <div className="flex gap-2">
@@ -466,7 +424,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                           onChange={e => setNewItem({...newItem, zone: e.target.value})}
                                       >
                                           <option value="" disabled>Select Area</option>
-                                          {availableZones.map(z => <option key={z} value={z}>{z}</option>)}
+                                          {availableZones.map(z => <option key={z.name} value={z.name}>{z.name}</option>)}
                                       </select>
                                       <button onClick={() => setIsAddingZone(true)} className="px-4 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-xl border border-stone-200 transition-colors" title="Add New Area">
                                           <Plus className="w-5 h-5" />
@@ -510,30 +468,11 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                           </button>
                                       </div>
                                   )}
-                                  {!imagePreview && editingId && removeImage && (
-                                      <span className="text-xs text-stone-500 font-medium">Image will be removed</span>
-                                  )}
-                                  <input
-                                      ref={imageInputRef}
-                                      type="file"
-                                      accept="image/*"
-                                      capture="environment"
-                                      onChange={handleImageChange}
-                                      className="hidden"
-                                  />
-                                  {editingId && imagePreview && (
-                                      <button
-                                          type="button"
-                                          onClick={clearSelectedImage}
-                                          className="text-xs text-red-600 font-bold underline"
-                                      >
-                                          Remove image
-                                      </button>
-                                  )}
+                                  <input ref={imageInputRef} type="file" accept="image/*" capture="environment" onChange={handleImageChange} className="hidden" />
                               </div>
                           </div>
 
-                              <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-2">
                                   <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Est. Time</label>
                                   {isMobile ? (
@@ -605,18 +544,20 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                 </div>
                             </div>
 
-                          <div className="bg-stone-50 border border-stone-100 rounded-xl p-3 flex items-center justify-between">
-                              <label className="flex items-center gap-2 text-sm text-stone-700 cursor-pointer select-none font-bold">
-                                  <input type="checkbox" 
-                                      checked={newItem.recurrence > 0} 
-                                      onChange={e => setNewItem({...newItem, recurrence: e.target.checked ? 1 : 0})}
-                                      className="w-5 h-5 rounded border-stone-300 text-emerald-500 focus:ring-emerald-500"
-                                  />
-                                  Repeat Task?
-                              </label>
+                          <div className="bg-stone-50 border border-stone-100 rounded-xl p-3 flex flex-col gap-2">
+                              <div className="flex items-center justify-between">
+                                  <label className="flex items-center gap-2 text-sm text-stone-700 cursor-pointer select-none font-bold">
+                                      <input type="checkbox" 
+                                          checked={newItem.recurrence > 0} 
+                                          onChange={e => setNewItem({...newItem, recurrence: e.target.checked ? 1 : 0})}
+                                          className="w-5 h-5 rounded border-stone-300 text-emerald-500 focus:ring-emerald-500"
+                                      />
+                                      Repeat Task?
+                                  </label>
+                              </div>
                               
                               {newItem.recurrence > 0 && (
-                                  <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-300">
+                                  <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-300 pl-7">
                                        <span className="text-xs text-stone-500 font-bold">Every</span>
                                        <input 
                                           type="number" 
@@ -625,7 +566,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                           value={newItem.recurrence}
                                           onChange={e => setNewItem({...newItem, recurrence: parseInt(e.target.value) || 1})}
                                        />
-                                       <span className="text-xs text-stone-500 font-bold">days</span>
+                                       <span className="text-xs text-stone-500 font-bold">days (Reappears at 7 AM)</span>
                                   </div>
                               )}
                           </div>
@@ -646,11 +587,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           {lightboxImage && (
               <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setLightboxImage(null)}>
                   <div className="relative bg-white rounded-2xl overflow-hidden shadow-2xl max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
-                      <button
-                          className="absolute top-3 right-3 bg-white/90 rounded-full p-2 shadow-md border border-stone-200 hover:bg-stone-100"
-                          onClick={() => setLightboxImage(null)}
-                          aria-label="Close image preview"
-                      >
+                      <button className="absolute top-3 right-3 bg-white/90 rounded-full p-2 shadow-md border border-stone-200 hover:bg-stone-100" onClick={() => setLightboxImage(null)}>
                           <X className="w-5 h-5 text-stone-600" />
                       </button>
                       <img src={lightboxImage} alt="Task" className="w-full h-full max-h-[80vh] object-contain bg-black" />
@@ -671,18 +608,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                           </p>
                       </div>
                       <div className="grid grid-cols-2 gap-3 pt-2">
-                          <button 
-                              onClick={() => setDeletingId(null)}
-                              className="py-3 px-4 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-xl font-bold transition-colors"
-                          >
-                              Cancel
-                          </button>
-                          <button 
-                              onClick={confirmDelete}
-                              className="py-3 px-4 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-red-100 transition-all active:scale-95"
-                          >
-                              Delete
-                          </button>
+                          <button onClick={() => setDeletingId(null)} className="py-3 px-4 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-xl font-bold transition-colors">Cancel</button>
+                          <button onClick={confirmDelete} className="py-3 px-4 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-red-100 transition-all active:scale-95">Delete</button>
                       </div>
                   </div>
               </div>

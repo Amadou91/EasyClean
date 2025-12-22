@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Task } from '../types';
+import { Task, Zone, Level } from '../types';
 import { Check, Clock, ArrowLeft, RotateCw, SkipForward, Lock } from 'lucide-react';
 import { getTaskImagePublicUrl } from '../lib/storage';
 
 interface ExecutionViewProps {
   inventory: Task[];
+  zones: Zone[];
   onBack: () => void;
   timeWindow: number;
   activeZone: string | null;
+  activeLevel: Level | null; // New prop for filtering by level
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
 }
 
@@ -25,7 +27,7 @@ const PriorityBadge = ({ priority }: { priority: number }) => {
 };
 
 export const ExecutionView: React.FC<ExecutionViewProps> = ({
-  inventory, onBack, timeWindow, activeZone, onUpdateTask
+  inventory, zones, onBack, timeWindow, activeZone, activeLevel, onUpdateTask
 }) => {
   const [sessionTasks, setSessionTasks] = useState<Task[]>([]);
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
@@ -55,10 +57,19 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
 
     const remainingTime = Math.max(timeWindow - completedDuration, 0);
 
+    // Initial Filter: Pending tasks not skipped
     let pending = inventory.filter(t => t.status === 'pending' && !skippedTaskIds.includes(t.id));
 
+    // Zone Filter
     if (activeZone) {
         pending = pending.filter(t => t.zone === activeZone);
+    }
+
+    // Level Filter (Supersedes Zone filter usually, but logic allows both if ever needed)
+    if (activeLevel) {
+        // Find all zone names that match this level
+        const matchingZones = zones.filter(z => z.level === activeLevel).map(z => z.name);
+        pending = pending.filter(t => matchingZones.includes(t.zone));
     }
 
     const sorted = pending.sort(compareTasks);
@@ -84,9 +95,8 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
 
     setSessionTasks(queue);
     setCurrentTaskIndex(0);
-  }, [inventory, timeWindow, activeZone, skippedTaskIds, sessionCompletedIds]);
+  }, [inventory, timeWindow, activeZone, activeLevel, skippedTaskIds, sessionCompletedIds, zones]);
 
-  // Helper to determine duration color styles
   const getDurationStyles = (duration: number) => {
     if (duration <= 15) return "bg-emerald-50 text-emerald-700 border-emerald-200";
     if (duration <= 30) return "bg-teal-50 text-teal-700 border-teal-200";
@@ -107,12 +117,21 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
     const currentTask = sessionTasks[currentTaskIndex];
     if (!currentTask) return;
 
-    const candidates = inventory.filter(t =>
-        t.status === 'pending' &&
-        !skippedTaskIds.includes(t.id) &&
-        !sessionTasks.find(st => st.id === t.id) &&
-        !inventory.some(i => i.id === t.dependency && i.status !== 'completed')
-    );
+    // Filter candidates based on active logic (Zone OR Level)
+    const candidates = inventory.filter(t => {
+        if (t.status !== 'pending') return false;
+        if (skippedTaskIds.includes(t.id)) return false;
+        if (sessionTasks.find(st => st.id === t.id)) return false;
+        if (inventory.some(i => i.id === t.dependency && i.status !== 'completed')) return false;
+
+        // Apply same filters as main effect
+        if (activeZone && t.zone !== activeZone) return false;
+        if (activeLevel) {
+             const taskZoneLevel = zones.find(z => z.name === t.zone)?.level;
+             if (taskZoneLevel !== activeLevel) return false;
+        }
+        return true;
+    });
 
     if (candidates.length === 0) {
         alert("No other available tasks to swap with!");
@@ -144,8 +163,9 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
       t.status === 'pending' &&
       t.dependency === currentTask?.id &&
       !skippedTaskIds.includes(t.id) &&
+      !sessionTasks.find(st => st.id === t.id) &&
       (!activeZone || t.zone === activeZone) &&
-      !sessionTasks.find(st => st.id === t.id)
+      (!activeLevel || zones.find(z => z.name === t.zone)?.level === activeLevel)
     )
     .sort(compareTasks);
 
@@ -159,7 +179,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                 </div>
                 <div>
                     <h3 className="text-3xl font-serif text-stone-900 mb-2">
-                        {noTasksFound ? "Time Limit Reached" : (activeZone ? `${activeZone} Clear!` : "All Caught Up!")}
+                        {noTasksFound ? "Time Limit Reached" : (activeZone ? `${activeZone} Clear!` : activeLevel ? `${activeLevel === 'upstairs' ? 'Upstairs' : 'Downstairs'} Clear!` : "All Caught Up!")}
                     </h3>
                     <p className="text-stone-600 max-w-xs mx-auto text-sm leading-relaxed">
                         {noTasksFound

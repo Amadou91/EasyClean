@@ -6,16 +6,18 @@ import { InventoryView } from './components/InventoryView';
 import { LoginView } from './components/LoginView';
 import { Home, LogOut } from 'lucide-react';
 import { supabase } from './lib/supabase';
+import { Level } from './types';
 
 export default function App() {
   const [view, setView] = useState<'dashboard' | 'execute' | 'inventory'>('dashboard');
   const [filterZone, setFilterZone] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState(30);
   const [activeZone, setActiveZone] = useState<string | null>(null);
+  const [activeLevel, setActiveLevel] = useState<Level | null>(null); // New State
   
   const {
     inventory,
-    zones,
+    zones, // Now Zone[]
     addTask,
     deleteTask,
     addZone, 
@@ -75,40 +77,40 @@ export default function App() {
         </div>
       </div>
 
-      {/* SCROLL CONTAINER
-         FIX: This is now 'w-full' (Full Width).
-         It captures scroll gestures across the entire screen width.
-      */}
       <div className="flex-1 min-h-0 w-full overflow-y-auto relative overscroll-contain pwa-scroll-area mt-4 pb-6">
-
-          {/* CONTENT WRAPPER
-             The 'max-w-6xl' constraint is moved INSIDE the scroll view.
-             Added 'min-h-full' to ensure views that need height can stretch.
-          */}
           <div className="w-full max-w-6xl mx-auto min-h-full px-2 sm:px-4">
             {view === 'dashboard' && (
                 <DashboardView
-                inventory={inventory}
-                onSwitchView={setView}
-                onFilterZone={(z) => { setFilterZone(z); setView('inventory'); }}
-                selectedTime={selectedTime}
-                setSelectedTime={setSelectedTime}
-                onTackleArea={(zone) => {
-                    setSelectedTime(9999);
-                    setActiveZone(zone);
-                    setView('execute');
-                }}
+                  inventory={inventory}
+                  zones={zones}
+                  onSwitchView={setView}
+                  onFilterZone={(z) => { setFilterZone(z); setView('inventory'); }}
+                  selectedTime={selectedTime}
+                  setSelectedTime={setSelectedTime}
+                  onTackleArea={(zone) => {
+                      setSelectedTime(9999);
+                      setActiveZone(zone);
+                      setActiveLevel(null);
+                      setView('execute');
+                  }}
+                  onStartExecution={(level) => {
+                      setActiveLevel(level); // Set the level filter
+                      setActiveZone(null);
+                      setView('execute');
+                  }}
                 />
             )}
-      {view === 'execute' && (
-          <ExecutionView
-              inventory={inventory}
-                onBack={() => { setView('dashboard'); setActiveZone(null); }}
-                timeWindow={selectedTime}
-                activeZone={activeZone}
-                onUpdateTask={updateTask}
-            />
-        )}
+            {view === 'execute' && (
+                <ExecutionView
+                  inventory={inventory}
+                  zones={zones} // Pass zones so execution view knows levels
+                  onBack={() => { setView('dashboard'); setActiveZone(null); setActiveLevel(null); }}
+                  timeWindow={selectedTime}
+                  activeZone={activeZone}
+                  activeLevel={activeLevel} // Pass the active level
+                  onUpdateTask={updateTask}
+                />
+            )}
             {view === 'inventory' && (
                 <InventoryView 
                     inventory={inventory} 
@@ -119,7 +121,7 @@ export default function App() {
                     onUpdateTask={updateTask}
                     onExport={exportData}
                     onImport={importData}
-                    availableZones={zones} 
+                    availableZones={zones} // Now Zone[]
                     onBack={() => setView('dashboard')} 
                     initialFilter={filterZone} 
                 />
