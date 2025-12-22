@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Task, Priority, Status, Zone, Level } from '../types';
-import { ArrowLeft, Trash, Plus, Repeat, Edit, Check, X, AlertTriangle, Download, Upload, Link, Image as ImageIcon, Maximize2 } from 'lucide-react';
+import { ArrowLeft, Trash, Plus, Repeat, Edit, Check, X, AlertTriangle, Download, Upload, Link, Image as ImageIcon, Maximize2, Settings2 } from 'lucide-react';
 import { getTaskImagePublicUrl } from '../lib/storage';
 
 interface InventoryViewProps {
@@ -43,18 +43,20 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   inventory, onBack, initialFilter, availableZones, onAddZone, onDeleteZone, onAddTask, onUpdateTask, onDeleteTask, onExport, onImport
 }) => {
   const [isAdding, setIsAdding] = useState(false);
-  const [isAddingZone, setIsAddingZone] = useState(false);
+  const [isManagingZones, setIsManagingZones] = useState(false);
+  
   const [newZoneName, setNewZoneName] = useState("");
-  const [newZoneLevel, setNewZoneLevel] = useState<Level>('downstairs'); // New state for zone creation
+  const [newZoneLevel, setNewZoneLevel] = useState<Level>('downstairs');
+  
   const [filterZone, setFilterZone] = useState(initialFilter || 'All');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  
   const [newItemImage, setNewItemImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [removeImage, setRemoveImage] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
-  const lastZoneSelectionRef = useRef<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
@@ -95,6 +97,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   useEffect(() => {
       if (!isAdding) {
           setEditingId(null);
+          setIsManagingZones(false);
           setNewItem({
             zone: filterZone !== 'All' ? filterZone : (availableZones[0]?.name || ''),
             label: '',
@@ -203,8 +206,10 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const handleCreateZone = () => {
       if(newZoneName && !availableZones.some(z => z.name === newZoneName)){
           onAddZone(newZoneName, newZoneLevel);
-          setNewItem(prev => ({...prev, zone: newZoneName}));
-          setIsAddingZone(false);
+          // If we are currently adding a task, set its zone to this new one
+          if (!isManagingZones) {
+             setNewItem(prev => ({...prev, zone: newZoneName}));
+          }
           setNewZoneName("");
           setNewZoneLevel('downstairs'); // reset default
       }
@@ -254,37 +259,20 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               </div>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto overflow-y-visible pt-1 pb-4 mb-2 no-scrollbar px-1">
+          <div className="flex gap-3 overflow-x-auto py-2 px-1 mb-2 no-scrollbar snap-x">
               <button
                   onClick={() => setFilterZone('All')}
-                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${filterZone === 'All' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200 scale-105' : 'bg-white text-stone-700 border border-[color:var(--border)] hover:border-emerald-300'}`}
+                  className={`snap-start shrink-0 px-6 py-2.5 rounded-full text-sm font-bold transition-all ${filterZone === 'All' ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-200' : 'bg-white text-stone-600 border border-[color:var(--border)] hover:border-emerald-300 shadow-sm'}`}
               >
                   All
               </button>
               {availableZones.map(z => (
                   <button
                       key={z.name}
-                      onClick={() => {
-                          setFilterZone(z.name);
-                          lastZoneSelectionRef.current = Date.now();
-                      }}
-                      className={`group flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${filterZone === z.name ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200 scale-105 pr-2' : 'bg-white text-stone-700 border border-[color:var(--border)] hover:border-emerald-300'}`}
+                      onClick={() => setFilterZone(z.name)}
+                      className={`snap-start shrink-0 px-6 py-2.5 rounded-full text-sm font-bold transition-all whitespace-nowrap ${filterZone === z.name ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-200' : 'bg-white text-stone-600 border border-[color:var(--border)] hover:border-emerald-300 shadow-sm'}`}
                   >
                       {z.name}
-                      {filterZone === z.name && (
-                        <span
-                          onClick={(e) => {
-                             e.stopPropagation();
-                             if (Date.now() - lastZoneSelectionRef.current < 300) return;
-                             onDeleteZone(z.name);
-                             setFilterZone('All');
-                          }}
-                          className="ml-1 p-0.5 bg-emerald-600 rounded-full hover:bg-red-500 transition-colors cursor-pointer"
-                          title={`Delete ${z.name}`}
-                        >
-                            <X className="w-3 h-3 text-white" />
-                        </span>
-                      )}
                   </button>
               ))}
           </div>
@@ -374,26 +362,47 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                   <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-6 space-y-6 animate-in zoom-in-95 duration-200 border border-stone-100 max-h-[90vh] overflow-y-auto custom-scrollbar">
                       <div className="flex justify-between items-center border-b border-stone-100 pb-4">
                           <div>
-                              <h3 className="text-xl font-serif text-stone-900">{editingId ? "Edit Task" : "New Task"}</h3>
-                              <p className="text-xs text-stone-500 mt-1">Fill in the details below</p>
+                              <h3 className="text-xl font-serif text-stone-900">
+                                  {isManagingZones ? "Manage Areas" : (editingId ? "Edit Task" : "New Task")}
+                              </h3>
+                              <p className="text-xs text-stone-500 mt-1">
+                                  {isManagingZones ? "Create or remove spaces" : "Fill in the details below"}
+                              </p>
                           </div>
                           <button onClick={() => setIsAdding(false)} className="text-stone-400 hover:text-stone-800 bg-stone-50 hover:bg-stone-100 rounded-full p-2 transition-colors">
                             <X className="w-5 h-5" />
                           </button>
                       </div>
                       
-                      <div className="space-y-5">
-                          {/* Zone Selection with new "Add Zone" UI that supports Levels */}
-                          <div className="space-y-2">
-                              <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Zone / Area</label>
-                              {isAddingZone ? (
-                                  <div className="space-y-3 animate-in slide-in-from-left-2 duration-200 p-3 bg-stone-50 rounded-xl border border-stone-200">
+                      {isManagingZones ? (
+                          <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                              <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-1">
+                                  {availableZones.length === 0 && <p className="text-sm text-stone-500 text-center py-4 italic">No areas defined yet.</p>}
+                                  {availableZones.map(z => (
+                                      <div key={z.name} className="flex items-center justify-between p-3 rounded-xl bg-stone-50 border border-stone-100">
+                                          <div>
+                                              <div className="font-bold text-stone-800 text-sm">{z.name}</div>
+                                              <div className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">{z.level}</div>
+                                          </div>
+                                          <button 
+                                              onClick={() => onDeleteZone(z.name)}
+                                              className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                              title="Delete Area"
+                                          >
+                                              <Trash className="w-4 h-4" />
+                                          </button>
+                                      </div>
+                                  ))}
+                              </div>
+
+                              <div className="pt-4 border-t border-stone-100">
+                                  <label className="text-xs font-bold text-stone-500 uppercase tracking-widest mb-3 block">Create New Area</label>
+                                  <div className="space-y-3">
                                       <input 
-                                          className="w-full bg-white border border-stone-200 rounded-lg p-2.5 text-stone-900 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all font-medium"
-                                          placeholder="Area Name (e.g. Master Bath)"
+                                          className="w-full bg-white border border-stone-200 rounded-lg p-3 text-stone-900 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all font-medium"
+                                          placeholder="Area Name (e.g. Guest Room)"
                                           value={newZoneName}
                                           onChange={e => setNewZoneName(e.target.value)}
-                                          autoFocus
                                       />
                                       <div className="flex gap-2">
                                           <button 
@@ -411,12 +420,25 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                               Downstairs
                                           </button>
                                       </div>
-                                      <div className="flex gap-2 mt-2">
-                                          <button onClick={handleCreateZone} className="flex-1 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-bold shadow-sm transition-colors">Save Zone</button>
-                                          <button onClick={() => setIsAddingZone(false)} className="px-3 text-stone-500 hover:text-stone-700 bg-white rounded-lg border border-stone-200">Cancel</button>
-                                      </div>
+                                      <button 
+                                          onClick={handleCreateZone}
+                                          className="w-full py-3 bg-stone-800 hover:bg-stone-900 text-white rounded-xl text-sm font-bold shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                          disabled={!newZoneName}
+                                      >
+                                          Add Area
+                                      </button>
                                   </div>
-                              ) : (
+                              </div>
+                              
+                              <button onClick={() => setIsManagingZones(false)} className="w-full py-3 text-stone-600 font-bold bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors">
+                                  Back to Task
+                              </button>
+                          </div>
+                      ) : (
+                          <div className="space-y-5">
+                              {/* Zone Selection */}
+                              <div className="space-y-2">
+                                  <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Zone / Area</label>
                                   <div className="flex gap-2">
                                       <select 
                                           className="flex-1 bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none font-medium appearance-none cursor-pointer hover:bg-stone-100 transition-colors"
@@ -426,160 +448,160 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                           <option value="" disabled>Select Area</option>
                                           {availableZones.map(z => <option key={z.name} value={z.name}>{z.name}</option>)}
                                       </select>
-                                      <button onClick={() => setIsAddingZone(true)} className="px-4 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-xl border border-stone-200 transition-colors" title="Add New Area">
-                                          <Plus className="w-5 h-5" />
+                                      <button onClick={() => setIsManagingZones(true)} className="px-4 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-xl border border-stone-200 transition-colors" title="Manage Areas">
+                                          <Settings2 className="w-5 h-5" />
                                       </button>
                                   </div>
-                              )}
-                          </div>
-
-                          <div className="space-y-2">
-                              <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Task Name</label>
-                              <input
-                                  className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all placeholder:text-stone-400 font-medium"
-                                  placeholder="e.g. Wipe Kitchen Counters"
-                                  value={newItem.label}
-                                  onChange={e => setNewItem({...newItem, label: e.target.value})}
-                              />
-                          </div>
-
-                          <div className="space-y-2">
-                              <label className="text-xs font-bold text-stone-500 uppercase tracking-widest flex items-center gap-2">
-                                  <ImageIcon className="w-4 h-4" /> Task Photo (optional)
-                              </label>
-                              <div className="flex items-center gap-3 flex-wrap">
-                                  <button
-                                      type="button"
-                                      onClick={() => imageInputRef.current?.click()}
-                                      className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl border border-stone-200 text-sm font-bold transition-colors"
-                                  >
-                                      {imagePreview ? 'Replace Image' : 'Upload Image'}
-                                  </button>
-                                  {imagePreview && (
-                                      <div className="relative">
-                                          <img src={imagePreview} alt="Task" className="w-16 h-16 object-cover rounded-lg border border-[color:var(--border)]" />
-                                          <button
-                                              type="button"
-                                              onClick={clearSelectedImage}
-                                              className="absolute -top-2 -right-2 bg-white border border-stone-200 rounded-full p-1 shadow-sm text-stone-500 hover:text-red-500"
-                                              aria-label="Remove image"
-                                          >
-                                              <X className="w-3 h-3" />
-                                          </button>
-                                      </div>
-                                  )}
-                                  <input ref={imageInputRef} type="file" accept="image/*" capture="environment" onChange={handleImageChange} className="hidden" />
-                              </div>
-                          </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                  <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Est. Time</label>
-                                  {isMobile ? (
-                                      <div className="flex items-center gap-3 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100 transition-all">
-                                          <select
-                                              className="flex-1 bg-transparent text-stone-900 text-sm font-bold outline-none appearance-none cursor-pointer py-1"
-                                              value={newItem.duration}
-                                              onChange={e => setNewItem({...newItem, duration: parseInt(e.target.value) || 1})}
-                                          >
-                                              {Array.from({ length: 60 }, (_, i) => i + 1).map((minute) => (
-                                                  <option key={minute} value={minute}>{minute} min</option>
-                                              ))}
-                                          </select>
-                                      </div>
-                                  ) : (
-                                      <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl p-3 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100 transition-all">
-                                          <input
-                                              type="number"
-                                              className="bg-transparent text-stone-900 text-sm w-full outline-none font-bold"
-                                              placeholder="10"
-                                              value={newItem.duration}
-                                              min={1}
-                                              onChange={e => setNewItem({...newItem, duration: parseInt(e.target.value) || 0})}
-                                          />
-                                          <span className="text-xs text-stone-500 font-bold uppercase">min</span>
-                                      </div>
-                                  )}
                               </div>
 
                               <div className="space-y-2">
-                                  <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Priority</label>
-                                  <select 
-                                      className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none font-medium cursor-pointer"
-                                      value={newItem.priority}
-                                      onChange={e => setNewItem({...newItem, priority: parseInt(e.target.value) as Priority})}
-                                  >
-                                      <option value={1}>High (Urgent)</option>
-                                      <option value={2}>Medium (Normal)</option>
-                                      <option value={3}>Low (Casual)</option>
-                                  </select>
+                                  <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Task Name</label>
+                                  <input
+                                      className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all placeholder:text-stone-400 font-medium"
+                                      placeholder="e.g. Wipe Kitchen Counters"
+                                      value={newItem.label}
+                                      onChange={e => setNewItem({...newItem, label: e.target.value})}
+                                  />
                               </div>
-                          </div>
-                          
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Prerequisite (Dependency)</label>
-                                <div className="relative">
-                                    <Link className="w-4 h-4 absolute left-3 top-3.5 text-stone-400" />
-                                    <select
-                                        className="w-full pl-10 bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none font-medium cursor-pointer appearance-none"
-                                        value={newItem.dependency || ""}
-                                        onChange={e => setNewItem({...newItem, dependency: e.target.value || null})}
-                                        style={newItem.dependency ? { backgroundColor: getZoneColor(inventory.find(t => t.id === newItem.dependency)?.zone || '', 0.08) } : undefined}
-                                    >
-                                        <option value="">None (No prerequisites)</option>
-                                        {dependencyOptions.map(({ zone, tasks }) => (
-                                            <optgroup key={zone} label={zone}>
-                                                {tasks.map(task => (
-                                                    <option
-                                                        key={task.id}
-                                                        value={task.id}
-                                                        style={{ backgroundColor: getZoneColor(task.zone, 0.12) }}
-                                                    >
-                                                        {task.label}
-                                                    </option>
-                                                ))}
-                                            </optgroup>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
 
-                          <div className="bg-stone-50 border border-stone-100 rounded-xl p-3 flex flex-col gap-2">
-                              <div className="flex items-center justify-between">
-                                  <label className="flex items-center gap-2 text-sm text-stone-700 cursor-pointer select-none font-bold">
-                                      <input type="checkbox" 
-                                          checked={newItem.recurrence > 0} 
-                                          onChange={e => setNewItem({...newItem, recurrence: e.target.checked ? 1 : 0})}
-                                          className="w-5 h-5 rounded border-stone-300 text-emerald-500 focus:ring-emerald-500"
-                                      />
-                                      Repeat Task?
+                              <div className="space-y-2">
+                                  <label className="text-xs font-bold text-stone-500 uppercase tracking-widest flex items-center gap-2">
+                                      <ImageIcon className="w-4 h-4" /> Task Photo (optional)
                                   </label>
+                                  <div className="flex items-center gap-3 flex-wrap">
+                                      <button
+                                          type="button"
+                                          onClick={() => imageInputRef.current?.click()}
+                                          className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl border border-stone-200 text-sm font-bold transition-colors"
+                                      >
+                                          {imagePreview ? 'Replace Image' : 'Upload Image'}
+                                      </button>
+                                      {imagePreview && (
+                                          <div className="relative">
+                                              <img src={imagePreview} alt="Task" className="w-16 h-16 object-cover rounded-lg border border-[color:var(--border)]" />
+                                              <button
+                                                  type="button"
+                                                  onClick={clearSelectedImage}
+                                                  className="absolute -top-2 -right-2 bg-white border border-stone-200 rounded-full p-1 shadow-sm text-stone-500 hover:text-red-500"
+                                                  aria-label="Remove image"
+                                              >
+                                                  <X className="w-3 h-3" />
+                                              </button>
+                                          </div>
+                                      )}
+                                      <input ref={imageInputRef} type="file" accept="image/*" capture="environment" onChange={handleImageChange} className="hidden" />
+                                  </div>
+                              </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div className="space-y-2">
+                                      <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Est. Time</label>
+                                      {isMobile ? (
+                                          <div className="flex items-center gap-3 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100 transition-all">
+                                              <select
+                                                  className="flex-1 bg-transparent text-stone-900 text-sm font-bold outline-none appearance-none cursor-pointer py-1"
+                                                  value={newItem.duration}
+                                                  onChange={e => setNewItem({...newItem, duration: parseInt(e.target.value) || 1})}
+                                              >
+                                                  {Array.from({ length: 60 }, (_, i) => i + 1).map((minute) => (
+                                                      <option key={minute} value={minute}>{minute} min</option>
+                                                  ))}
+                                              </select>
+                                          </div>
+                                      ) : (
+                                          <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-xl p-3 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100 transition-all">
+                                              <input
+                                                  type="number"
+                                                  className="bg-transparent text-stone-900 text-sm w-full outline-none font-bold"
+                                                  placeholder="10"
+                                                  value={newItem.duration}
+                                                  min={1}
+                                                  onChange={e => setNewItem({...newItem, duration: parseInt(e.target.value) || 0})}
+                                              />
+                                              <span className="text-xs text-stone-500 font-bold uppercase">min</span>
+                                          </div>
+                                      )}
+                                  </div>
+
+                                  <div className="space-y-2">
+                                      <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Priority</label>
+                                      <select 
+                                          className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none font-medium cursor-pointer"
+                                          value={newItem.priority}
+                                          onChange={e => setNewItem({...newItem, priority: parseInt(e.target.value) as Priority})}
+                                      >
+                                          <option value={1}>High (Urgent)</option>
+                                          <option value={2}>Medium (Normal)</option>
+                                          <option value={3}>Low (Casual)</option>
+                                      </select>
+                                  </div>
                               </div>
                               
-                              {newItem.recurrence > 0 && (
-                                  <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-300 pl-7">
-                                       <span className="text-xs text-stone-500 font-bold">Every</span>
-                                       <input 
-                                          type="number" 
-                                          min="1"
-                                          className="w-16 bg-white border border-stone-200 rounded-lg text-stone-900 text-sm outline-none text-center font-bold py-1 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all"
-                                          value={newItem.recurrence}
-                                          onChange={e => setNewItem({...newItem, recurrence: parseInt(e.target.value) || 1})}
-                                       />
-                                       <span className="text-xs text-stone-500 font-bold">days (Reappears at 7 AM)</span>
-                                  </div>
-                              )}
-                          </div>
-                      </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Prerequisite (Dependency)</label>
+                                    <div className="relative">
+                                        <Link className="w-4 h-4 absolute left-3 top-3.5 text-stone-400" />
+                                        <select
+                                            className="w-full pl-10 bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none font-medium cursor-pointer appearance-none"
+                                            value={newItem.dependency || ""}
+                                            onChange={e => setNewItem({...newItem, dependency: e.target.value || null})}
+                                            style={newItem.dependency ? { backgroundColor: getZoneColor(inventory.find(t => t.id === newItem.dependency)?.zone || '', 0.08) } : undefined}
+                                        >
+                                            <option value="">None (No prerequisites)</option>
+                                            {dependencyOptions.map(({ zone, tasks }) => (
+                                                <optgroup key={zone} label={zone}>
+                                                    {tasks.map(task => (
+                                                        <option
+                                                            key={task.id}
+                                                            value={task.id}
+                                                            style={{ backgroundColor: getZoneColor(task.zone, 0.12) }}
+                                                        >
+                                                            {task.label}
+                                                        </option>
+                                                    ))}
+                                                </optgroup>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
 
-                      <div className="pt-2 flex gap-3">
-                          <button onClick={() => setIsAdding(false)} className="flex-1 py-3 text-stone-600 font-bold bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors">
-                              Cancel
-                          </button>
-                          <button onClick={handleSave} className="flex-[2] py-3 text-white font-bold bg-teal-600 hover:bg-teal-700 shadow-lg shadow-teal-200 rounded-xl transition-all active:scale-95">
-                              {editingId ? "Update Task" : "Create Task"}
-                          </button>
-                      </div>
+                              <div className="bg-stone-50 border border-stone-100 rounded-xl p-3 flex flex-col gap-2">
+                                  <div className="flex items-center justify-between">
+                                      <label className="flex items-center gap-2 text-sm text-stone-700 cursor-pointer select-none font-bold">
+                                          <input type="checkbox" 
+                                              checked={newItem.recurrence > 0} 
+                                              onChange={e => setNewItem({...newItem, recurrence: e.target.checked ? 1 : 0})}
+                                              className="w-5 h-5 rounded border-stone-300 text-emerald-500 focus:ring-emerald-500"
+                                          />
+                                          Repeat Task?
+                                      </label>
+                                  </div>
+                                  
+                                  {newItem.recurrence > 0 && (
+                                      <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-300 pl-7">
+                                           <span className="text-xs text-stone-500 font-bold">Every</span>
+                                           <input 
+                                              type="number" 
+                                              min="1"
+                                              className="w-16 bg-white border border-stone-200 rounded-lg text-stone-900 text-sm outline-none text-center font-bold py-1 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all"
+                                              value={newItem.recurrence}
+                                              onChange={e => setNewItem({...newItem, recurrence: parseInt(e.target.value) || 1})}
+                                           />
+                                           <span className="text-xs text-stone-500 font-bold">days (Reappears at 7 AM)</span>
+                                      </div>
+                                  )}
+                              </div>
+
+                              <div className="pt-2 flex gap-3">
+                                  <button onClick={() => setIsAdding(false)} className="flex-1 py-3 text-stone-600 font-bold bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors">
+                                      Cancel
+                                  </button>
+                                  <button onClick={handleSave} className="flex-[2] py-3 text-white font-bold bg-teal-600 hover:bg-teal-700 shadow-lg shadow-teal-200 rounded-xl transition-all active:scale-95">
+                                      {editingId ? "Update Task" : "Create Task"}
+                                  </button>
+                              </div>
+                          </div>
+                      )}
                   </div>
               </div>
           )}

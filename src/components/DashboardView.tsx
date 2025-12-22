@@ -5,7 +5,6 @@ import { Clock, Check, Play, Edit, Zap, ArrowUp, ArrowDown, X } from 'lucide-rea
 interface DashboardViewProps {
   inventory: Task[];
   zones: Zone[];
-  onSwitchView: (view: 'dashboard' | 'execute' | 'inventory') => void;
   onFilterZone: (zone: string) => void;
   selectedTime: number;
   setSelectedTime: (time: number) => void;
@@ -279,9 +278,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                                 <div className="font-serif font-bold text-stone-900 text-lg leading-tight">{zoneObj.name}</div>
                                                 <div className="flex items-center gap-2 mt-1">
                                                      <div className="text-xs text-stone-500 font-semibold uppercase tracking-[0.2em]">{done}/{total} Done</div>
-                                                     {zoneObj.level && (
-                                                         <span className="text-[9px] font-bold text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded uppercase tracking-wider">{zoneObj.level === 'upstairs' ? 'UP' : 'DN'}</span>
-                                                     )}
+                                                     {/* Removed Level Indicator for cleaner UI as requested */}
                                                 </div>
                                             </div>
                                         </div>

@@ -67,7 +67,7 @@ export default function App() {
             </div>
             <div className="flex items-center gap-3">
                 <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 border border-[color:var(--border)] text-[13px] font-semibold text-stone-700 shadow-inner">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden />
+                    <span className="w-2 h-2 rounded-full bg-emerald-50" aria-hidden />
                     {user.email}
                 </div>
                 <button onClick={handleLogout} className="text-stone-500 hover:text-red-600 transition-all p-2 hover:bg-white rounded-xl hover:shadow-sm border border-transparent hover:border-[color:var(--border)]" title="Sign Out">
@@ -83,7 +83,6 @@ export default function App() {
                 <DashboardView
                   inventory={inventory}
                   zones={zones}
-                  onSwitchView={setView}
                   onFilterZone={(z) => { setFilterZone(z); setView('inventory'); }}
                   selectedTime={selectedTime}
                   setSelectedTime={setSelectedTime}
