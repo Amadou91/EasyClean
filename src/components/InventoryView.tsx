@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Task, Priority, Status } from '../types';
-import { ArrowLeft, Trash, Plus, Repeat, Edit, Check, X, AlertTriangle, Download, Upload, Link } from 'lucide-react';
+import { ArrowLeft, Trash, Plus, Repeat, Edit, Check, X, AlertTriangle, Download, Upload, Link, RotateCw } from 'lucide-react';
 
 interface InventoryViewProps {
   inventory: Task[];
@@ -67,7 +67,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       duration: 10,
       priority: 2 as Priority,
       recurrence: 0,
-      dependency: null as string | null
+      dependency: null as string | null,
+      resettable: false
   });
 
   const [isMobile, setIsMobile] = useState(false);
@@ -97,13 +98,14 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   useEffect(() => {
       if (!isAdding) {
           setEditingId(null);
-          setNewItem({ 
-            zone: filterZone !== 'All' ? filterZone : (availableZones[0] || ''), 
-            label: '', 
+          setNewItem({
+            zone: filterZone !== 'All' ? filterZone : (availableZones[0] || ''),
+            label: '',
             duration: 10,
             priority: 2,
             recurrence: 0,
-            dependency: null
+            dependency: null,
+            resettable: false
         });
       }
   }, [isAdding, filterZone, availableZones]);
@@ -166,6 +168,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               status: 'pending',
               dependency: newItem.dependency || null,
               lastCompleted: null,
+              resettable: newItem.resettable,
               created_at: new Date().toISOString(),
               user_id: '' // Managed by hook
           } as Task;
@@ -182,7 +185,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           duration: task.duration,
           priority: task.priority,
           recurrence: task.recurrence || 0,
-          dependency: task.dependency
+          dependency: task.dependency,
+          resettable: task.resettable ?? false
       });
       setEditingId(task.id);
       setIsAdding(true);
@@ -346,10 +350,16 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                                 </div>
                                             ) : (
                                                 <>
-                                                    <Repeat className="w-3 h-3" />
-                                                    <span className="border-b border-dashed border-emerald-400/50">{task.recurrence}d</span>
-                                                </>
-                                            )}
+                                                <Repeat className="w-3 h-3" />
+                                                <span className="border-b border-dashed border-emerald-400/50">{task.recurrence}d</span>
+                                            </>
+                                        )}
+                                        </div>
+                                    )}
+                                    {task.resettable && (
+                                        <div className="text-emerald-700 flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded border border-[color:var(--border)] font-semibold tracking-tight">
+                                            <RotateCw className="w-3 h-3" />
+                                            <span className="text-[10px] uppercase">Reusable</span>
                                         </div>
                                     )}
                                     {dependencyTask && (
@@ -365,6 +375,15 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                             <span className={`text-xs font-mono font-bold px-2 py-1 rounded-md border ${getDurationStyles(task.duration)}`}>
                                 {task.duration}m
                             </span>
+                            {task.status === 'completed' && task.resettable && (
+                                <button
+                                    onClick={() => handleToggleStatus(task.id, task.status)}
+                                    className="text-emerald-700 hover:text-emerald-800 transition-colors p-2 hover:bg-emerald-50 rounded-full border border-transparent hover:border-emerald-200"
+                                    title="Mark as needs doing again"
+                                >
+                                    <RotateCw className="w-4 h-4" />
+                                </button>
+                            )}
                             <button onClick={() => handleEdit(task)} className="text-stone-500 hover:text-emerald-700 transition-colors p-2 hover:bg-emerald-50 rounded-full" title="Edit">
                                 <Edit className="w-4 h-4" />
                             </button>
@@ -514,8 +533,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
 
                           <div className="bg-stone-50 border border-stone-100 rounded-xl p-3 flex items-center justify-between">
                               <label className="flex items-center gap-2 text-sm text-stone-700 cursor-pointer select-none font-bold">
-                                  <input type="checkbox" 
-                                      checked={newItem.recurrence > 0} 
+                                  <input type="checkbox"
+                                      checked={newItem.recurrence > 0}
                                       onChange={e => setNewItem({...newItem, recurrence: e.target.checked ? 1 : 0})}
                                       className="w-5 h-5 rounded border-stone-300 text-emerald-500 focus:ring-emerald-500"
                                   />
@@ -532,9 +551,30 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                           value={newItem.recurrence}
                                           onChange={e => setNewItem({...newItem, recurrence: parseInt(e.target.value) || 1})}
                                        />
-                                       <span className="text-xs text-stone-500 font-bold">days</span>
+                                      <span className="text-xs text-stone-500 font-bold">days</span>
                                   </div>
                               )}
+                          </div>
+
+                          <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                  <div className={`w-9 h-9 rounded-full flex items-center justify-center border ${newItem.resettable ? 'bg-white text-emerald-600 border-emerald-200' : 'bg-white text-stone-400 border-stone-200'}`}>
+                                      <RotateCw className="w-4 h-4" />
+                                  </div>
+                                  <div>
+                                      <p className="text-sm font-bold text-stone-800">Reusable task</p>
+                                      <p className="text-xs text-stone-500">Keep it handy for next time without scheduling.</p>
+                                  </div>
+                              </div>
+                              <label className="relative inline-flex items-center cursor-pointer">
+                                  <input
+                                      type="checkbox"
+                                      className="sr-only peer"
+                                      checked={newItem.resettable}
+                                      onChange={(e) => setNewItem({ ...newItem, resettable: e.target.checked })}
+                                  />
+                                  <div className="w-11 h-6 bg-stone-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                              </label>
                           </div>
                       </div>
 
