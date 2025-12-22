@@ -1,13 +1,38 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Task } from '../types';
+import { Level, Room, Task } from '../types';
 import { User } from '@supabase/supabase-js';
 
 export function useInventory() {
     const [inventory, setInventory] = useState<Task[]>([]);
-    const [zones, setZones] = useState<string[]>([]);
+    const [zones, setZones] = useState<Room[]>([]);
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<User | null>(null);
+    const [zoneLevelSupported, setZoneLevelSupported] = useState(true);
+
+    const LEVEL_STORAGE_KEY = 'easyclean:room-levels';
+
+    const loadStoredLevels = () => {
+        try {
+            const raw = localStorage.getItem(LEVEL_STORAGE_KEY);
+            return raw ? JSON.parse(raw) as Record<string, Level> : {};
+        } catch (e) {
+            console.error('Failed to read stored levels', e);
+            return {} as Record<string, Level>;
+        }
+    };
+
+    const persistStoredLevels = (rooms: Room[]) => {
+        try {
+            const map: Record<string, Level> = {};
+            rooms.forEach(room => {
+                map[room.name] = room.level;
+            });
+            localStorage.setItem(LEVEL_STORAGE_KEY, JSON.stringify(map));
+        } catch (e) {
+            console.error('Failed to persist levels', e);
+        }
+    };
 
     // 1. Auth Listener
     useEffect(() => {
@@ -37,9 +62,28 @@ export function useInventory() {
         setLoading(true);
         
         try {
-            // Fetch Zones
-            const { data: zoneData } = await supabase.from('zones').select('name');
-            if (zoneData) setZones(zoneData.map((z: { name: string }) => z.name));
+            // Fetch Zones (with legacy fallback if level column doesn't exist yet)
+            const { data: zoneData, error: zoneError } = await supabase.from('zones').select('name, level');
+
+            if (zoneError) {
+                setZoneLevelSupported(false);
+
+                // Column might not exist for older databases; fall back to the legacy shape
+                const { data: legacyZoneData } = await supabase.from('zones').select('name');
+                if (legacyZoneData) {
+                    const storedLevels = loadStoredLevels();
+                    setZones(legacyZoneData.map((z: { name: string }) => ({
+                        name: z.name,
+                        level: storedLevels[z.name] || 'Lower Level'
+                    })));
+                }
+            } else if (zoneData) {
+                setZoneLevelSupported(true);
+                setZones(zoneData.map((z: { name: string; level?: Level | null }) => ({
+                    name: z.name,
+                    level: z.level === 'Upper Level' ? 'Upper Level' : 'Lower Level'
+                })));
+            }
 
             // Fetch Tasks
             const { data: taskData, error } = await supabase
@@ -138,21 +182,40 @@ export function useInventory() {
         await supabase.from('tasks').delete().eq('id', id);
     };
 
-    const addZone = async (name: string) => {
+    const addZone = async (name: string, level: Level) => {
         if (!user) return;
-        setZones(prev => [...prev, name]);
-        await supabase.from('zones').insert([{ name }]);
+        const newRoom: Room = { name, level };
+        setZones(prev => [...prev, newRoom]);
+
+        if (zoneLevelSupported) {
+            await supabase.from('zones').insert([{ name, level }]);
+        } else {
+            await supabase.from('zones').insert([{ name }]);
+            persistStoredLevels([...zones, newRoom]);
+        }
+    };
+
+    const updateZoneLevel = async (name: string, level: Level) => {
+        if (!user) return;
+        const updated = (prev: Room[]) => prev.map(z => z.name === name ? { ...z, level } : z);
+        setZones(updated);
+
+        if (zoneLevelSupported) {
+            await supabase.from('zones').update({ level }).eq('name', name);
+        } else {
+            persistStoredLevels(updated(zones));
+        }
     };
 
     const deleteZone = async (name: string) => {
         if (window.confirm(`Delete "${name}" zone? Tasks will remain but the filter will be removed.`)) {
-            setZones(prev => prev.filter(z => z !== name));
+            setZones(prev => prev.filter(z => z.name !== name));
             await supabase.from('zones').delete().eq('name', name);
         }
     };
 
     const exportData = () => {
-        const data = { inventory, zones, version: "3.2" };
+        const data = { inventory, zones, version: "3.3" };
         const jsonString = `data:text/json;chatset=utf-8,${encodeURIComponent(JSON.stringify(data))}`;
         const link = document.createElement("a");
         link.href = jsonString;
@@ -173,12 +236,25 @@ export function useInventory() {
                 
                 // 1. Sync Zones
                 if (parsed.zones && Array.isArray(parsed.zones)) {
-                    const newZones = parsed.zones.filter((z: string) => !zones.includes(z));
-                    setZones(prev => [...prev, ...newZones]);
-                    
+                    const incomingRooms: Room[] = parsed.zones.map((z: Room | string) =>
+                        typeof z === 'string'
+                            ? { name: z, level: 'Lower Level' }
+                            : { name: z.name, level: z.level === 'Upper Level' ? 'Upper Level' : 'Lower Level' }
+                    );
+
+                    const newZones = incomingRooms.filter((z) => !zones.find(existing => existing.name === z.name));
+                    const mergedZones = [...zones, ...newZones];
+                    setZones(mergedZones);
+
                     if (newZones.length > 0) {
-                        const zoneInserts = newZones.map((name: string) => ({ name }));
-                        await supabase.from('zones').insert(zoneInserts);
+                        if (zoneLevelSupported) {
+                            const zoneInserts = newZones.map((room: Room) => ({ name: room.name, level: room.level }));
+                            await supabase.from('zones').insert(zoneInserts);
+                        } else {
+                            const zoneInserts = newZones.map((room: Room) => ({ name: room.name }));
+                            await supabase.from('zones').insert(zoneInserts);
+                            persistStoredLevels(mergedZones);
+                        }
                     }
                 }
 
@@ -233,5 +309,11 @@ export function useInventory() {
         reader.readAsText(file);
     };
 
-    return { inventory, setInventory, zones, user, loading, addTask, updateTask, deleteTask, addZone, deleteZone, exportData, importData };
+    useEffect(() => {
+        if (!zoneLevelSupported) {
+            persistStoredLevels(zones);
+        }
+    }, [zones, zoneLevelSupported]);
+
+    return { inventory, setInventory, zones, user, loading, addTask, updateTask, deleteTask, addZone, deleteZone, updateZoneLevel, exportData, importData, zoneLevelSupported };
 }
