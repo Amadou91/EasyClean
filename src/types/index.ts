@@ -1,25 +1,52 @@
-export type Priority = 1 | 2 | 3;
-export type Status = 'pending' | 'completed' | 'blocked';
-export type Level = 'upstairs' | 'downstairs';
+export type Frequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
 
-export interface Zone {
+export interface Room {
+  id: string;
   name: string;
-  level: Level;
+  level: number; // Changed from string to number per audit
+  user_id: string;
+  created_at: string;
 }
 
 export interface Task {
   id: string;
-  user_id?: string;
-  created_at?: string;
-  completed_at?: string | null;
-  completed_by?: string | null;
-  zone: string; // References Zone.name
-  label: string;
-  duration: number; // in minutes
-  priority: Priority;
-  status: Status;
-  dependency: string | null;
-  recurrence: number; // days
-  lastCompleted: number | null; // timestamp (legacy, prefer completed_at)
-  image_url?: string | null;
+  room_id: string;
+  title: string;
+  description?: string;
+  frequency: Frequency;
+  is_forced: boolean;
+  created_at: string;
+  image_url?: string;
+  // Added for logic calculation. 
+  // NOTE: You will need to update your Supabase query to join the last session date 
+  // or use a Postgres function to attach this field to the Task object.
+  last_cleaned_at?: string | null; 
+}
+
+export interface Session {
+  id: string;
+  room_id: string;
+  user_id: string;
+  started_at: string;
+  completed_at?: string;
+  notes?: string;
+}
+
+// New Interface for the relational table
+export interface SessionTask {
+  id: string;
+  session_id: string;
+  task_id: string;
+  status: 'completed' | 'skipped';
+  completed_at: string;
+}
+
+export interface InventoryItem {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  low_stock_threshold: number;
+  user_id: string;
+  created_at: string;
 }

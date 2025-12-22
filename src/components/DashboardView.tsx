@@ -1,355 +1,336 @@
-import React, { useMemo, useState } from 'react';
-import { Task, Zone, Level } from '../types';
-import { Clock, Check, Play, Edit, Zap, ArrowUp, ArrowDown, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Trash2, Home, List, AlertCircle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { Room, Task, Frequency } from '../types';
 
 interface DashboardViewProps {
-  inventory: Task[];
-  zones: Zone[];
-  onFilterZone: (zone: string) => void;
-  selectedTime: number;
-  setSelectedTime: (time: number) => void;
-  onTackleArea: (zone: string) => void;
-  onStartExecution: (level: Level | null) => void;
+  user: any;
+  onRoomSelect: (room: Room, tasks: Task[]) => void;
+  inventoryCount: number;
 }
 
-const Countdown = () => {
-    const [targetDate, setTargetDate] = useState<Date>(() => {
-        try {
-            const saved = localStorage.getItem('easyCleanTargetDate');
-            if (saved) return new Date(saved);
-        } catch { /* ignore */ }
-        
-        const today = new Date();
-        const currentYear = today.getFullYear();
-        let nye = new Date(currentYear, 11, 31);
-        if (today.getMonth() === 11 && today.getDate() > 31) {
-            nye = new Date(currentYear + 1, 11, 31);
-        }
-        return nye;
-    });
+export function DashboardView({ user, onRoomSelect, inventoryCount }: DashboardViewProps) {
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Modal states
+  const [showAddRoom, setShowAddRoom] = useState(false);
+  const [showAddTask, setShowAddTask] = useState(false);
+  
+  // Form states
+  const [newRoomName, setNewRoomName] = useState('');
+  const [newRoomLevel, setNewRoomLevel] = useState<number>(1); // Changed to number
+  
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskRoomId, setNewTaskRoomId] = useState('');
+  const [newTaskFrequency, setNewTaskFrequency] = useState<Frequency>('weekly');
 
-    const [isHovering, setIsHovering] = useState(false);
-    const today = new Date();
-    const diffTime = Math.ceil((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    const daysLeft = Math.max(0, diffTime);
+  useEffect(() => {
+    fetchData();
+  }, [user]);
 
-    const handleEditDate = () => {
-        const currentStr = targetDate.toISOString().split('T')[0];
-        const newDateStr = prompt("Set target date (YYYY-MM-DD):", currentStr);
-        if (newDateStr) {
-            const newDate = new Date(newDateStr);
-            if (!isNaN(newDate.getTime())) {
-                setTargetDate(newDate);
-                localStorage.setItem('easyCleanTargetDate', newDate.toISOString());
-            } else {
-                alert("Invalid date format.");
-            }
-        }
-    };
+  const fetchData = async () => {
+    try {
+      const { data: roomsData, error: roomsError } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('level', { ascending: true }) // Order by level
+        .order('name', { ascending: true });
 
-    return (
-        <div 
-            className="flex flex-col items-end cursor-pointer group relative select-none"
-            onMouseEnter={() => setIsHovering(true)}
-            onMouseLeave={() => setIsHovering(false)}
-            onClick={handleEditDate}
-            title="Click to change target date"
-        >
-            <div className="flex items-center gap-2">
-                <div className={`transition-opacity duration-200 ${isHovering ? 'opacity-100' : 'opacity-0'}`}>
-                     <Edit className="w-4 h-4 text-stone-400" />
-                </div>
-                <span className="text-4xl font-serif text-teal-900">{daysLeft}</span>
-            </div>
-            <span className="text-[10px] uppercase tracking-widest text-stone-500 font-bold">
-                Days Left
-            </span>
-        </div>
-    );
-};
+      if (roomsError) throw roomsError;
+      setRooms(roomsData || []);
 
-export const DashboardView: React.FC<DashboardViewProps> = ({
-  inventory, zones, onFilterZone, selectedTime, setSelectedTime, onTackleArea, onStartExecution
-}) => {
-  const totalTasks = inventory.length;
-  const completedTasks = inventory.filter(t => t.status === 'completed').length;
-  const operationalPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 100;
+      const { data: tasksData, error: tasksError } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', user.id); // In a real app, you'd likely join with last session date here
 
-  const [viewMode, setViewMode] = useState<'rooms' | 'tasks'>('rooms');
-  const [showLevelPrompt, setShowLevelPrompt] = useState(false);
-
-  // Grouping Logic
-  const groupedTasks = useMemo(() =>
-      zones
-          .map(zoneObj => ({
-              zone: zoneObj.name,
-              level: zoneObj.level,
-              tasks: inventory
-                  .filter(t => t.zone === zoneObj.name)
-                  .sort((a, b) => {
-                      if (a.priority !== b.priority) return a.priority - b.priority;
-                      return a.duration - b.duration;
-                  })
-          }))
-          .filter(group => group.tasks.length > 0)
-  , [inventory, zones]);
-
-  const handleStartCleaningClick = () => {
-      // Check if we have both upstairs and downstairs zones defined
-      const hasUpstairs = zones.some(z => z.level === 'upstairs');
-      const hasDownstairs = zones.some(z => z.level === 'downstairs');
-
-      if (hasUpstairs && hasDownstairs) {
-          setShowLevelPrompt(true);
-      } else {
-          // If only one level exists (or none), skip prompt
-          onStartExecution(null); 
-      }
+      if (tasksError) throw tasksError;
+      setTasks(tasksData || []);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const getPriorityStyle = (priority: number) => {
-      switch (priority) {
-          case 1: return 'bg-rose-50 text-rose-700 border-rose-200';
-          case 2: return 'bg-amber-50 text-amber-700 border-amber-200';
-          default: return 'bg-blue-50 text-blue-700 border-blue-200';
-      }
+  const handleAddRoom = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const { data, error } = await supabase
+        .from('rooms')
+        .insert([{
+          name: newRoomName,
+          level: newRoomLevel,
+          user_id: user.id
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      setRooms([...rooms, data]);
+      setNewRoomName('');
+      setNewRoomLevel(1);
+      setShowAddRoom(false);
+    } catch (error) {
+      console.error('Error adding room:', error);
+    }
   };
 
-  const getTimeColor = (val: number, isSelected: boolean) => {
-      if (isSelected) {
-          if (val <= 15) return 'bg-emerald-500 text-white shadow-emerald-200';
-          if (val <= 30) return 'bg-teal-600 text-white shadow-teal-200';
-          if (val <= 45) return 'bg-amber-500 text-white shadow-amber-200';
-          if (val <= 60) return 'bg-orange-500 text-white shadow-orange-200';
-          return 'bg-rose-500 text-white shadow-rose-200'; 
-      }
-      return 'bg-white text-stone-600 border border-stone-200 hover:border-teal-300 hover:text-teal-700';
+  const handleAddTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTaskRoomId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert([{
+          title: newTaskTitle,
+          room_id: newTaskRoomId,
+          user_id: user.id,
+          frequency: newTaskFrequency,
+          is_forced: false
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      setTasks([...tasks, data]);
+      setNewTaskTitle('');
+      setShowAddTask(false);
+    } catch (error) {
+      console.error('Error adding task:', error);
+    }
   };
+
+  const handleDeleteRoom = async (e: React.MouseEvent, roomId: string) => {
+    e.stopPropagation();
+    // Safety Improvement: Explicit warning about data loss
+    if (!confirm('WARNING: Deleting this room will delete ALL historic session data associated with it. This cannot be undone.\n\nAre you sure you want to proceed?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('rooms')
+        .delete()
+        .eq('id', roomId);
+
+      if (error) throw error;
+      setRooms(rooms.filter(r => r.id !== roomId));
+      setTasks(tasks.filter(t => t.room_id !== roomId));
+    } catch (error) {
+      console.error('Error deleting room:', error);
+    }
+  };
+
+  // Group rooms by level for better UI organization
+  const groupedRooms = rooms.reduce((acc, room) => {
+    const level = room.level;
+    if (!acc[level]) acc[level] = [];
+    acc[level].push(room);
+    return acc;
+  }, {} as Record<number, Room[]>);
+
+  if (loading) return <div className="p-6 text-center text-gray-500">Loading your space...</div>;
 
   return (
-    <div className="min-h-full space-y-9 animate-in fade-in pb-10 scroll-panels relative">
-        {/* Status Card */}
-        <div className="card-panel p-8 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-6 bg-gradient-to-br from-white/90 via-white to-emerald-50/60 border-[color:var(--border)] shadow-[0_25px_70px_-40px_rgba(12,74,57,0.65)]">
-            <div className="space-y-3">
-                <div className="text-xs uppercase tracking-[0.3em] font-bold text-stone-500">Overall Progress</div>
-                <div className="flex items-end gap-3">
-                    <div className="text-5xl font-serif text-stone-900 leading-none">{operationalPercent}%</div>
-                    <span className="text-lg text-stone-500 font-semibold">tidied</span>
-                </div>
-                <div className="h-3.5 w-64 bg-[color:var(--surface-muted)] rounded-full overflow-hidden shadow-inner border border-[color:var(--border)]">
-                    <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-teal-700 h-full transition-all duration-1000 rounded-full" style={{ width: `${operationalPercent}%` }}></div>
-                </div>
-                <p className="text-sm text-stone-600 max-w-xl leading-relaxed">Keep a steady cadence—short bursts compound into a beautifully calm home.</p>
-            </div>
-            <div className="flex-shrink-0">
-                <Countdown />
-            </div>
-        </div>
+    <div className="h-full overflow-y-auto bg-gray-50 p-4 pb-24">
+      <header className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">My Home</h1>
+        <p className="text-gray-500">
+            {tasks.length} tasks across {rooms.length} rooms
+            {inventoryCount > 0 && ` • ${inventoryCount} inventory items`}
+        </p>
+      </header>
 
-        {/* Execution Panel */}
-        <div className="card-panel p-8 rounded-3xl bg-white/95 border-[color:var(--border)]">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
-                <div className="flex-1">
-                    <label className="text-xs text-stone-600 uppercase font-bold mb-4 flex items-center gap-2 tracking-[0.3em]">
-                        <Clock className="w-4 h-4 text-teal-600" /> How much time do you have?
-                    </label>
-                    <div className="flex gap-3 overflow-x-auto py-2 px-1 -mx-1 no-scrollbar">
-                        {[15, 30, 45, 60, 9999].map((val) => (
-                            <button
-                                key={val}
-                                onClick={() => setSelectedTime(val)}
-                                className={`py-2.5 px-6 rounded-full text-sm font-bold transition-all whitespace-nowrap duration-200 shadow-sm ${
-                                    getTimeColor(val, selectedTime === val)
-                                } ${selectedTime === val ? 'scale-[1.03]' : 'hover:scale-[1.02]'}`}
-                            >
-                                {val === 9999 ? 'All' : `${val}m`}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-                <div className="md:w-auto w-full">
-                    <button
-                        onClick={handleStartCleaningClick}
-                        className="w-full md:w-auto px-10 py-4 text-base rounded-full font-bold flex items-center gap-2 justify-center transition-all active:scale-[0.98] bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-700 hover:shadow-[0_20px_55px_-28px_rgba(12,74,57,0.9)] text-white shadow-lg"
+      <div className="space-y-6">
+        {Object.entries(groupedRooms).map(([level, levelRooms]) => (
+           <div key={level}>
+              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 ml-1">
+                 {Number(level) === 0 ? 'Ground Floor' : `Level ${level}`}
+              </h3>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {levelRooms.map(room => {
+                  const roomTasks = tasks.filter(t => t.room_id === room.id);
+                  return (
+                    <div 
+                      key={room.id}
+                      onClick={() => onRoomSelect(room, roomTasks)}
+                      className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 active:scale-[0.98] transition-all cursor-pointer hover:shadow-md"
                     >
-                        <Zap className="w-5 h-5 fill-current" /> Start Cleaning
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        {/* Level Prompt Modal */}
-        {showLevelPrompt && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-                <div className="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl p-8 space-y-6 animate-in zoom-in-95 duration-200 border border-stone-100">
-                    <div className="flex justify-between items-center">
-                        <h3 className="text-xl font-serif text-stone-900">Where are you?</h3>
-                        <button onClick={() => setShowLevelPrompt(false)} className="p-2 bg-stone-50 rounded-full hover:bg-stone-100 transition-colors">
-                            <X className="w-5 h-5 text-stone-500" />
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+                          <Home className="w-5 h-5" />
+                        </div>
+                        <button 
+                          onClick={(e) => handleDeleteRoom(e, room.id)}
+                          className="text-gray-300 hover:text-red-500 transition-colors p-1"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </button>
+                      </div>
+                      <h3 className="font-bold text-gray-900 mb-1">{room.name}</h3>
+                      <p className="text-sm text-gray-500">{roomTasks.length} tasks configured</p>
                     </div>
-                    <p className="text-stone-600 text-sm leading-relaxed">
-                        Select a floor to focus on. We'll prioritize tasks in that area.
-                    </p>
-                    <div className="grid grid-cols-1 gap-4">
-                        <button
-                            onClick={() => onStartExecution('upstairs')}
-                            className="flex items-center justify-between p-4 rounded-2xl border border-stone-200 hover:border-emerald-400 hover:bg-emerald-50 transition-all group"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-stone-100 rounded-xl group-hover:bg-white transition-colors">
-                                    <ArrowUp className="w-5 h-5 text-stone-600 group-hover:text-emerald-600" />
-                                </div>
-                                <span className="font-bold text-stone-800 group-hover:text-emerald-800">Upstairs</span>
-                            </div>
-                        </button>
-                        <button
-                            onClick={() => onStartExecution('downstairs')}
-                            className="flex items-center justify-between p-4 rounded-2xl border border-stone-200 hover:border-teal-400 hover:bg-teal-50 transition-all group"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-stone-100 rounded-xl group-hover:bg-white transition-colors">
-                                    <ArrowDown className="w-5 h-5 text-stone-600 group-hover:text-teal-600" />
-                                </div>
-                                <span className="font-bold text-stone-800 group-hover:text-teal-800">Downstairs</span>
-                            </div>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        )}
-
-        {/* Lists */}
-        <div className="space-y-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between px-2">
-                <div className="flex items-center gap-3 flex-wrap">
-                    <div
-                        className="inline-flex items-center bg-[color:var(--surface-muted)] border border-[color:var(--border)] rounded-full p-1 shadow-inner"
-                        role="group"
-                    >
-                        <button
-                            onClick={() => setViewMode('rooms')}
-                            className={`px-4 py-2 text-sm font-semibold rounded-full transition-all ${viewMode === 'rooms' ? 'bg-white shadow-sm text-teal-900' : 'text-stone-600 hover:text-teal-800'}`}
-                        >
-                            Your Rooms
-                        </button>
-                        <button
-                            onClick={() => setViewMode('tasks')}
-                            className={`px-4 py-2 text-sm font-semibold rounded-full transition-all ${viewMode === 'tasks' ? 'bg-white shadow-sm text-teal-900' : 'text-stone-600 hover:text-teal-800'}`}
-                        >
-                            Your Tasks
-                        </button>
-                    </div>
-                </div>
-                <button
-                    onClick={() => onFilterZone('All')}
-                    className="text-xs font-bold text-teal-800 hover:text-teal-900 bg-emerald-50 hover:bg-emerald-100 px-5 py-2.5 rounded-full transition-colors flex items-center gap-2 shadow-sm border border-[color:var(--border)]"
+                  );
+                })}
+              </div>
+           </div>
+        ))}
+        
+        {rooms.length === 0 && (
+            <div className="text-center py-10 bg-white rounded-2xl border border-dashed border-gray-300">
+                <Home className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <h3 className="text-lg font-medium text-gray-900">No rooms yet</h3>
+                <p className="text-gray-500 mb-4">Add your first room to get started</p>
+                <button 
+                    onClick={() => setShowAddRoom(true)}
+                    className="text-blue-600 font-semibold"
                 >
-                    <Edit className="w-3 h-3" /> Edit Tasks
+                    + Add Room
                 </button>
             </div>
-            <div className="relative">
-                {viewMode === 'rooms' && (
-                    <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 animate-in fade-in duration-300">
-                        {zones.length === 0 && (
-                            <div className="text-sm text-stone-500 italic p-10 text-center bg-white/50 rounded-3xl border border-dashed border-stone-300 col-span-full">
-                                No areas defined yet. Add tasks to create your spaces.
-                            </div>
-                        )}
-                        {zones.map(zoneObj => {
-                            const zoneTasks = inventory.filter(t => t.zone === zoneObj.name);
-                            const done = zoneTasks.filter(t => t.status === 'completed').length;
-                            const total = zoneTasks.length;
-                            const pct = total > 0 ? Math.round((done/total)*100) : 0;
-                            const isComplete = pct === 100 && total > 0;
+        )}
+      </div>
 
-                            return (
-                                <div
-                                    key={zoneObj.name}
-                                    className="card-panel p-6 rounded-3xl flex flex-col justify-between transition-all group border-l-0 card-hover cursor-pointer relative overflow-hidden bg-white/95"
-                                    onClick={() => onFilterZone(zoneObj.name)}
-                                >
-                                    <div className="flex items-start justify-between mb-6">
-                                        <div className="flex items-center gap-4">
-                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg shadow-inner transition-colors ${isComplete ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-[color:var(--surface-muted)] text-stone-600 border border-[color:var(--border)]'}`}>
-                                                {isComplete ? <Check className="w-6 h-6" /> : zoneObj.name.charAt(0)}
-                                            </div>
-                                            <div>
-                                                <div className="font-serif font-bold text-stone-900 text-lg leading-tight">{zoneObj.name}</div>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                     <div className="text-xs text-stone-500 font-semibold uppercase tracking-[0.2em]">{done}/{total} Done</div>
-                                                     {/* Removed Level Indicator for cleaner UI as requested */}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+      {/* Floating Action Button */}
+      <div className="fixed bottom-6 right-6 flex flex-col gap-3">
+        <button
+          onClick={() => setShowAddTask(true)}
+          className="w-14 h-14 bg-white text-blue-600 rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors border border-gray-100"
+          title="Add Task"
+        >
+          <List className="w-6 h-6" />
+        </button>
+        <button
+          onClick={() => setShowAddRoom(true)}
+          className="w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-colors"
+          title="Add Room"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+      </div>
 
-                                    <div className="w-full bg-[color:var(--surface-muted)] h-1.5 rounded-full overflow-hidden mb-6 border border-[color:var(--border)]">
-                                        <div className={`h-full rounded-full transition-all duration-500 ${isComplete ? 'bg-gradient-to-r from-emerald-400 to-emerald-600' : 'bg-stone-300'}`} style={{width: `${pct}%`}}></div>
-                                    </div>
-
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); onTackleArea(zoneObj.name); }}
-                                        className="w-full py-2.5 text-[11px] font-bold text-stone-700 hover:text-teal-800 bg-white hover:bg-emerald-50 rounded-xl flex items-center justify-center gap-2 transition-all uppercase tracking-[0.24em] border border-[color:var(--border)] shadow-sm"
-                                    >
-                                        <Play className="w-3 h-3" /> Tackle Area
-                                    </button>
-                                </div>
-                            )
-                        })}
-                    </div>
-                )}
-                {viewMode === 'tasks' && (
-                    <div className="card-panel p-5 sm:p-6 rounded-3xl bg-white/95 border-[color:var(--border)] space-y-6 animate-in fade-in duration-300">
-                        {groupedTasks.length === 0 && (
-                            <div className="text-sm text-stone-500 italic p-6 text-center bg-white/70 rounded-2xl border border-dashed border-stone-300">
-                                No tasks available yet.
-                            </div>
-                        )}
-                        {groupedTasks.map(({ zone, level, tasks }) => (
-                            <div key={zone} className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <span
-                                            aria-hidden
-                                            className="w-1 h-10 rounded-full bg-gradient-to-b from-emerald-500 via-teal-500 to-teal-700 shadow-inner"
-                                        ></span>
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <div className="font-serif text-xl font-bold text-emerald-900 leading-tight">{zone}</div>
-                                                <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100/50 px-2 py-0.5 rounded uppercase tracking-wider">{level}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <span className="text-xs font-bold text-emerald-800 uppercase tracking-[0.24em] bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 shadow-sm">
-                                        {tasks.length} Tasks
-                                    </span>
-                                </div>
-                                <div className="space-y-3">
-                                    {tasks.map(task => (
-                                        <div
-                                            key={task.id}
-                                            className="flex items-start justify-between gap-4 p-3 rounded-2xl bg-white/80 border border-[color:var(--border)] shadow-[0_10px_30px_-24px_rgba(12,74,57,0.55)]"
-                                        >
-                                            <div className="space-y-1">
-                                                <div className="font-semibold text-stone-800 leading-tight">{task.label}</div>
-                                                <div className="text-xs text-stone-500 flex items-center gap-1 font-semibold">
-                                                    <Clock className="w-3 h-3 text-emerald-600" />
-                                                    {task.duration} min
-                                                </div>
-                                            </div>
-                                            <span className={`text-[11px] font-bold uppercase tracking-[0.2em] px-3 py-1 rounded-full border ${getPriorityStyle(task.priority)}`}>
-                                                Priority {task.priority}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
+      {/* Add Room Modal */}
+      {showAddRoom && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
+            <h2 className="text-xl font-bold mb-4">Add New Room</h2>
+            <form onSubmit={handleAddRoom}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Room Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={newRoomName}
+                    onChange={e => setNewRoomName(e.target.value)}
+                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                    placeholder="e.g. Master Bedroom"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Floor / Level</label>
+                  {/* Changed to number input for data normalization */}
+                  <input
+                    type="number"
+                    required
+                    value={newRoomLevel}
+                    onChange={e => setNewRoomLevel(parseInt(e.target.value))}
+                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">0 = Ground, 1 = First Floor, etc.</p>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowAddRoom(false)}
+                  className="flex-1 text-gray-600 bg-gray-100 py-2 rounded-lg font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-medium"
+                >
+                  Create Room
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
+      )}
+
+      {/* Add Task Modal */}
+      {showAddTask && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
+            <h2 className="text-xl font-bold mb-4">Add New Task</h2>
+            <form onSubmit={handleAddTask}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Task Title</label>
+                  <input
+                    type="text"
+                    required
+                    value={newTaskTitle}
+                    onChange={e => setNewTaskTitle(e.target.value)}
+                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                    placeholder="e.g. Vacuum Floor"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Room</label>
+                  <select
+                    required
+                    value={newTaskRoomId}
+                    onChange={e => setNewTaskRoomId(e.target.value)}
+                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                  >
+                    <option value="">Select a room...</option>
+                    {rooms.map(room => (
+                      <option key={room.id} value={room.id}>{room.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
+                  <select
+                    required
+                    value={newTaskFrequency}
+                    onChange={e => setNewTaskFrequency(e.target.value as Frequency)}
+                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                  >
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="biweekly">Bi-weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowAddTask(false)}
+                  className="flex-1 text-gray-600 bg-gray-100 py-2 rounded-lg font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-medium"
+                >
+                  Create Task
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
-};
+}

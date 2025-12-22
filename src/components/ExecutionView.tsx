@@ -1,346 +1,312 @@
 import React, { useState, useEffect } from 'react';
-import { Task, Zone, Level } from '../types';
-import { Check, Clock, ArrowLeft, RotateCw, SkipForward, Lock } from 'lucide-react';
-import { getTaskImagePublicUrl } from '../lib/storage';
+import { Play, CheckCircle, Circle, ArrowLeft, Filter, AlertTriangle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { Task, Room } from '../types';
+import { isTaskDue } from '../lib/logic';
 
 interface ExecutionViewProps {
-  inventory: Task[];
-  zones: Zone[];
+  room: Room;
+  tasks: Task[];
   onBack: () => void;
-  timeWindow: number;
-  activeZone: string | null;
-  activeLevel: Level | null; // New prop for filtering by level
-  onUpdateTask: (id: string, updates: Partial<Task>) => void;
+  onComplete: () => void;
 }
 
-const PriorityBadge = ({ priority }: { priority: number }) => {
-    const styles: Record<number, string> = {
-        1: "bg-rose-50 text-rose-700 border-rose-200",
-        2: "bg-amber-50 text-amber-700 border-amber-200",
-        3: "bg-blue-50 text-blue-700 border-blue-200",
-    };
-    return (
-        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase border ${styles[priority] || styles[3]}`}>
-            P{priority}
-        </span>
-    );
-};
+const LOCAL_STORAGE_KEY = 'easyclean_active_session';
 
-export const ExecutionView: React.FC<ExecutionViewProps> = ({
-  inventory, zones, onBack, timeWindow, activeZone, activeLevel, onUpdateTask
-}) => {
-  const [sessionTasks, setSessionTasks] = useState<Task[]>([]);
-  const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
-  const [noTasksFound, setNoTasksFound] = useState(false);
-  const [skippedTaskIds, setSkippedTaskIds] = useState<string[]>([]);
-  const [sessionCompletedIds, setSessionCompletedIds] = useState<string[]>([]);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+export function ExecutionView({ room, tasks, onBack, onComplete }: ExecutionViewProps) {
+  const [activeSession, setActiveSession] = useState<{
+    roomId: string;
+    startTime: string;
+    completedTasks: string[];
+    skippedTasks: string[];
+  } | null>(null);
 
-  const compareTasks = (a: Task, b: Task) => {
-    const aIsBlocked = inventory.some(i => i.id === a.dependency && i.status !== 'completed');
-    const bIsBlocked = inventory.some(i => i.id === b.dependency && i.status !== 'completed');
+  const [loading, setLoading] = useState(false);
+  const [showAllTasks, setShowAllTasks] = useState(false);
 
-    if (aIsBlocked && !bIsBlocked) return 1;
-    if (!aIsBlocked && bIsBlocked) return -1;
-
-    if (a.priority !== b.priority) {
-      return (a.priority || 2) - (b.priority || 2);
-    }
-    return a.duration - b.duration;
-  };
-
+  // 1. Resilience: Load state from LocalStorage on mount
   useEffect(() => {
-    const completedDuration = sessionCompletedIds.reduce((total, id) => {
-      const task = inventory.find(t => t.id === id);
-      return task ? total + task.duration : total;
-    }, 0);
-
-    const remainingTime = Math.max(timeWindow - completedDuration, 0);
-
-    // Initial Filter: Pending tasks not skipped
-    let pending = inventory.filter(t => t.status === 'pending' && !skippedTaskIds.includes(t.id));
-
-    // Zone Filter
-    if (activeZone) {
-        pending = pending.filter(t => t.zone === activeZone);
+    const savedSession = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (savedSession) {
+      try {
+        const parsed = JSON.parse(savedSession);
+        // Only restore if it matches the current room to avoid cross-room pollution
+        if (parsed.roomId === room.id) {
+          setActiveSession(parsed);
+        }
+      } catch (e) {
+        console.error("Failed to restore session", e);
+      }
     }
+  }, [room.id]);
 
-    // Level Filter (Supersedes Zone filter usually, but logic allows both if ever needed)
-    if (activeLevel) {
-        // Find all zone names that match this level
-        const matchingZones = zones.filter(z => z.level === activeLevel).map(z => z.name);
-        pending = pending.filter(t => matchingZones.includes(t.zone));
+  // 2. Resilience: Save state to LocalStorage whenever it changes
+  useEffect(() => {
+    if (activeSession) {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(activeSession));
+    } else {
+      // If session is explicitly null (cancelled/finished), clear it
+      // Note: We handle the explicit clear in handleFinish/Cancel
     }
+  }, [activeSession]);
 
-    const sorted = pending.sort(compareTasks);
+  const startSession = () => {
+    setActiveSession({
+      roomId: room.id,
+      startTime: new Date().toISOString(),
+      completedTasks: [],
+      skippedTasks: []
+    });
+  };
 
-    let accumulatedTime = 0;
-    const queue: Task[] = [];
+  const toggleTask = (taskId: string) => {
+    if (!activeSession) return;
     
-    for (const task of sorted) {
-        if (task.dependency) {
-             const dep = inventory.find(i => i.id === task.dependency);
-             if(dep && dep.status !== 'completed') continue;
-        }
-
-        if (accumulatedTime + task.duration <= remainingTime) {
-            queue.push(task);
-            accumulatedTime += task.duration;
-        }
-    }
-
-    if (queue.length === 0 && pending.length > 0 && remainingTime < 9999) {
-          setNoTasksFound(true);
-    }
-
-    setSessionTasks(queue);
-    setCurrentTaskIndex(0);
-  }, [inventory, timeWindow, activeZone, activeLevel, skippedTaskIds, sessionCompletedIds, zones]);
-
-  const getDurationStyles = (duration: number) => {
-    if (duration <= 15) return "bg-emerald-50 text-emerald-700 border-emerald-200";
-    if (duration <= 30) return "bg-teal-50 text-teal-700 border-teal-200";
-    if (duration <= 45) return "bg-amber-50 text-amber-700 border-amber-200";
-    if (duration <= 60) return "bg-orange-50 text-orange-700 border-orange-200";
-    return "bg-rose-50 text-rose-700 border-rose-200";
-  };
-
-  const handleComplete = () => {
-    const task = sessionTasks[currentTaskIndex];
-    if (!task) return;
-    onUpdateTask(task.id, { status: 'completed' });
-    setSessionCompletedIds(prev => prev.includes(task.id) ? prev : [...prev, task.id]);
-    setCurrentTaskIndex(prev => Math.min(prev + 1, sessionTasks.length));
-  };
-
-  const handleSwap = () => {
-    const currentTask = sessionTasks[currentTaskIndex];
-    if (!currentTask) return;
-
-    // Filter candidates based on active logic (Zone OR Level)
-    const candidates = inventory.filter(t => {
-        if (t.status !== 'pending') return false;
-        if (skippedTaskIds.includes(t.id)) return false;
-        if (sessionTasks.find(st => st.id === t.id)) return false;
-        if (inventory.some(i => i.id === t.dependency && i.status !== 'completed')) return false;
-
-        // Apply same filters as main effect
-        if (activeZone && t.zone !== activeZone) return false;
-        if (activeLevel) {
-             const taskZoneLevel = zones.find(z => z.name === t.zone)?.level;
-             if (taskZoneLevel !== activeLevel) return false;
-        }
-        return true;
+    setActiveSession(prev => {
+      if (!prev) return null;
+      const isCompleted = prev.completedTasks.includes(taskId);
+      return {
+        ...prev,
+        completedTasks: isCompleted
+          ? prev.completedTasks.filter(id => id !== taskId)
+          : [...prev.completedTasks, taskId]
+      };
     });
-
-    if (candidates.length === 0) {
-        alert("No other available tasks to swap with!");
-        return;
-    }
-
-    candidates.sort((a, b) => {
-        const diffA = Math.abs(a.duration - currentTask.duration);
-        const diffB = Math.abs(b.duration - currentTask.duration);
-        return diffA - diffB;
-    });
-
-    const replacement = candidates[0];
-    const newSession = [...sessionTasks];
-    newSession[currentTaskIndex] = replacement;
-    setSessionTasks(newSession);
   };
 
-  const handleSkip = () => {
-      const task = sessionTasks[currentTaskIndex];
-      if (!task) return;
-      setSkippedTaskIds(prev => prev.includes(task.id) ? prev : [...prev, task.id]);
+  const handleFinishSession = async (action: 'complete_selected' | 'complete_and_skip_rest') => {
+    if (!activeSession) return;
+    setLoading(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No user found');
+
+      // 1. Create Session Record
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('sessions')
+        .insert([{
+          room_id: room.id,
+          user_id: user.id,
+          started_at: activeSession.startTime,
+          completed_at: new Date().toISOString(),
+          notes: '' 
+        }])
+        .select()
+        .single();
+
+      if (sessionError) throw sessionError;
+
+      // 2. Prepare Session Tasks (Relational Data Fix)
+      const tasksToInsert = [];
+
+      // Add Completed
+      activeSession.completedTasks.forEach(taskId => {
+        tasksToInsert.push({
+          session_id: sessionData.id,
+          task_id: taskId,
+          status: 'completed',
+          completed_at: new Date().toISOString()
+        });
+      });
+
+      // Add Skipped (if user chose to mark remaining as skipped)
+      if (action === 'complete_and_skip_rest') {
+        const remainingTasks = tasks.filter(t => !activeSession.completedTasks.includes(t.id));
+        remainingTasks.forEach(t => {
+          tasksToInsert.push({
+            session_id: sessionData.id,
+            task_id: t.id,
+            status: 'skipped',
+            completed_at: new Date().toISOString()
+          });
+        });
+      }
+
+      if (tasksToInsert.length > 0) {
+        const { error: taskError } = await supabase
+          .from('session_tasks')
+          .insert(tasksToInsert);
+        
+        if (taskError) throw taskError;
+      }
+
+      // Cleanup
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
+      setActiveSession(null);
+      onComplete();
+
+    } catch (error) {
+      console.error('Error completing session:', error);
+      alert('Failed to save session. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const currentTask = sessionTasks[currentTaskIndex];
-  const nextTasks = sessionTasks.slice(currentTaskIndex + 1);
-  const conditionalNextTasks = inventory
-    .filter(t =>
-      t.status === 'pending' &&
-      t.dependency === currentTask?.id &&
-      !skippedTaskIds.includes(t.id) &&
-      !sessionTasks.find(st => st.id === t.id) &&
-      (!activeZone || t.zone === activeZone) &&
-      (!activeLevel || zones.find(z => z.name === t.zone)?.level === activeLevel)
-    )
-    .sort(compareTasks);
+  // Filter Tasks based on Logic
+  const visibleTasks = showAllTasks 
+    ? tasks 
+    : tasks.filter(t => isTaskDue(t));
 
-  const taskImageUrl = getTaskImagePublicUrl(currentTask?.image_url);
-  
-    if (sessionTasks.length === 0) {
-         return (
-            <div className="flex flex-col items-center justify-center h-full text-center space-y-6 animate-in zoom-in-95">
-                <div className="w-24 h-24 rounded-full bg-emerald-50 flex items-center justify-center border border-[color:var(--border)] shadow-lg shadow-emerald-100">
-                     {noTasksFound ? <Clock className="w-10 h-10 text-emerald-700" /> : <Check className="w-10 h-10 text-emerald-700" />}
-                </div>
-                <div>
-                    <h3 className="text-3xl font-serif text-stone-900 mb-2">
-                        {noTasksFound ? "Time Limit Reached" : (activeZone ? `${activeZone} Clear!` : activeLevel ? `${activeLevel === 'upstairs' ? 'Upstairs' : 'Downstairs'} Clear!` : "All Caught Up!")}
-                    </h3>
-                    <p className="text-stone-600 max-w-xs mx-auto text-sm leading-relaxed">
-                        {noTasksFound
-                            ? "Remaining tasks take longer than your selected time."
-                            : "No pending tasks match your criteria. Take a breath."}
-                    </p>
-                </div>
-                <button onClick={onBack} className="px-6 py-3 bg-white hover:bg-emerald-50 text-stone-800 border border-[color:var(--border)] rounded-full font-bold transition-all shadow-md shadow-emerald-100">Return to Dashboard</button>
-            </div>
-         )
-    }
-  
-  if (!currentTask) {
-      return (
-          <div className="flex flex-col items-center justify-center h-full text-center space-y-6 animate-in zoom-in-95">
-              <div className="w-24 h-24 rounded-full bg-emerald-50 flex items-center justify-center border border-emerald-200 shadow-lg animate-bounce">
-                   <Check className="w-10 h-10 text-emerald-600" />
-              </div>
-              <div>
-                  <h3 className="text-3xl font-serif text-stone-900 mb-2">Session Complete</h3>
-                  <p className="text-stone-600 max-w-xs mx-auto text-sm leading-relaxed">
-                      Wonderful! You've finished all assigned tasks for this block.
-                  </p>
-              </div>
-              <button onClick={onBack} className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-full font-bold transition-all shadow-lg shadow-teal-200">Back to Home</button>
-          </div>
-      );
+  const progress = activeSession 
+    ? Math.round((activeSession.completedTasks.length / visibleTasks.length) * 100) 
+    : 0;
+
+  if (!activeSession) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+        <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-6">
+          <Play className="w-10 h-10 text-blue-600 ml-1" />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Ready to Clean?</h2>
+        <p className="text-gray-600 mb-8 max-w-sm">
+          Start a session for <span className="font-semibold text-gray-900">{room.name}</span>. 
+          There are {tasks.filter(t => isTaskDue(t)).length} tasks due.
+        </p>
+        <button
+          onClick={startSession}
+          className="w-full max-w-xs bg-blue-600 text-white py-4 px-8 rounded-xl font-semibold shadow-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+        >
+          <Play className="w-5 h-5" />
+          Start Session
+        </button>
+        <button
+          onClick={onBack}
+          className="mt-4 text-gray-500 hover:text-gray-700 font-medium"
+        >
+          Go Back
+        </button>
+      </div>
+    );
   }
 
-    return (
-        <div className="flex flex-col min-h-full animate-in slide-in-from-right duration-300 overflow-hidden">
-            <div className="flex justify-between items-center mb-6 sm:mb-8 flex-shrink-0">
-                <button onClick={onBack} className="text-stone-700 hover:text-stone-900 text-sm font-bold flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-[color:var(--border)] hover:bg-white transition-colors shadow-sm">
-                    <ArrowLeft className="w-4 h-4" /> End Session
-                </button>
-                <div className="text-[10px] sm:text-xs font-bold text-emerald-700 uppercase tracking-[0.28em] bg-emerald-50 border border-[color:var(--border)] px-4 py-2 rounded-full shadow-sm">
-                    Step {currentTaskIndex + 1} <span className="text-emerald-400">/</span> {sessionTasks.length}
-                </div>
-            </div>
-
-            <div className="space-y-8 pb-6">
-                <div className="card-panel rounded-[2rem] overflow-hidden shadow-xl bg-white border-t-8 border-t-emerald-500 flex-shrink-0">
-                     <div className="p-6 sm:p-10 space-y-6 sm:y-8">
-                      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-3">
-                                    <span className="text-[10px] font-bold text-stone-600 uppercase tracking-[0.28em] border border-[color:var(--border)] bg-[color:var(--surface-muted)] px-3 py-1 rounded-full">
-                                        {currentTask.zone}
-                                    </span>
-                                    <PriorityBadge priority={currentTask.priority || 2} />
-                                    {currentTask.recurrence > 0 && (
-                                        <div className="text-[10px] text-emerald-700 flex items-center gap-1 bg-emerald-50 px-3 py-1 rounded-full font-bold border border-[color:var(--border)]">
-                                            <RotateCw className="w-3 h-3" /> {currentTask.recurrence}d
-                                        </div>
-                                    )}
-                                </div>
-                              <h2 className="text-2xl sm:text-4xl font-serif text-stone-900 leading-tight">
-                                  {currentTask.label}
-                              </h2>
-                          </div>
-                          <div className={`px-4 py-2 sm:px-5 sm:py-3 rounded-2xl text-lg sm:text-xl font-bold border flex items-center gap-2 shadow-sm ${getDurationStyles(currentTask.duration)}`}>
-                              <Clock className="w-5 h-5 sm:w-6 sm:h-6 opacity-70" />
-                              {currentTask.duration}m
-                          </div>
-                      </div>
-
-                      {taskImageUrl && (
-                          <button
-                              type="button"
-                              onClick={() => setImagePreview(taskImageUrl)}
-                              className="mt-4 inline-flex items-center gap-3 bg-[color:var(--surface-muted)] border border-[color:var(--border)] rounded-2xl p-3 hover:border-emerald-300 transition-colors"
-                          >
-                              <img src={taskImageUrl} alt="Task visual" className="w-20 h-20 object-cover rounded-xl border border-white" />
-                              <div className="text-left">
-                                  <div className="text-xs uppercase tracking-[0.2em] text-stone-500 font-bold">Context</div>
-                                  <div className="text-sm font-semibold text-stone-800">Tap to view larger</div>
-                              </div>
-                          </button>
-                      )}
-
-                      <div className="grid grid-cols-1 gap-3 sm:gap-4 pt-2">
-                            <button
-                              onClick={handleComplete}
-                              className="text-base sm:text-lg py-4 sm:py-5 w-full rounded-xl font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-xl shadow-emerald-200 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-2"
-                            >
-                                <Check className="w-5 h-5 sm:w-6 sm:h-6" /> Mark Complete
-                            </button>
-
-                            {activeZone ? (
-                                <button onClick={handleSkip} className="w-full py-3 sm:py-4 text-stone-700 bg-white hover:bg-[color:var(--surface-muted)] border border-[color:var(--border)] rounded-xl font-bold transition-all flex items-center justify-center gap-2">
-                                    <SkipForward className="w-4 h-4" /> Skip Task
-                                </button>
-                            ) : (
-                                <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                                    <button onClick={handleSwap} className="py-3 sm:py-4 text-stone-700 bg-white hover:bg-[color:var(--surface-muted)] border border-[color:var(--border)] rounded-xl font-bold transition-all flex items-center justify-center gap-2">
-                                        <RotateCw className="w-4 h-4" /> Swap
-                                    </button>
-                                    <button onClick={handleSkip} className="py-3 sm:py-4 text-stone-700 bg-white hover:bg-[color:var(--surface-muted)] border border-[color:var(--border)] rounded-xl font-bold transition-all flex items-center justify-center gap-2">
-                                        <SkipForward className="w-4 h-4" /> Skip
-                                    </button>
-                                </div>
-                            )}
-                      </div>
-                   </div>
-              </div>
-
-                <div>
-                    <h4 className="text-[10px] font-bold text-stone-600 uppercase tracking-[0.28em] mb-4 ml-2">Up Next</h4>
-                    <div className="space-y-3">
-                        {nextTasks.map((t) => (
-                            <div key={t.id} className="flex justify-between items-center p-4 sm:p-5 rounded-2xl bg-white/90 border border-[color:var(--border)] shadow-sm text-sm text-stone-800 hover:border-emerald-300 transition-colors">
-                                <span className="truncate flex-1 font-medium">{t.label}</span>
-                                <div className="flex items-center gap-3">
-                                    {t.recurrence > 0 && <RotateCw className="w-3 h-3 text-emerald-400" />}
-                                    <PriorityBadge priority={t.priority || 2} />
-                                    <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded border w-12 text-center ${getDurationStyles(t.duration)}`}>
-                                        {t.duration}m
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
-                        {conditionalNextTasks.map((t) => (
-                            <div key={t.id} className="p-4 sm:p-5 rounded-2xl bg-white border border-dashed border-emerald-300/80 shadow-sm text-sm text-stone-700">
-                                <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-700 mb-2 uppercase tracking-[0.18em]">
-                                    <Lock className="w-4 h-4" /> Unlocks next
-                                </div>
-                                <div className="flex justify-between items-center gap-3 opacity-80">
-                                    <div className="flex flex-col flex-1 min-w-0">
-                                        <span className="truncate font-medium">{t.label}</span>
-                                        <span className="text-[11px] text-stone-500">Becomes next after this task</span>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        {t.recurrence > 0 && <RotateCw className="w-3 h-3 text-emerald-400" />}
-                                        <PriorityBadge priority={t.priority || 2} />
-                                        <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded border w-12 text-center ${getDurationStyles(t.duration)}`}>
-                                            {t.duration}m
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                        {nextTasks.length === 0 && conditionalNextTasks.length === 0 && (
-                            <div className="text-sm text-stone-500 italic text-center py-6 bg-white/70 rounded-2xl border border-dashed border-[color:var(--border)]">No further tasks in queue.</div>
-                        )}
-                    </div>
-                </div>
+  return (
+    <div className="h-full flex flex-col relative">
+      {/* Header */}
+      <div className="bg-white p-4 shadow-sm z-10">
+        <div className="flex items-center justify-between mb-4">
+          <button 
+            onClick={() => {
+              if (confirm('Cancel session? Progress will be lost.')) {
+                localStorage.removeItem(LOCAL_STORAGE_KEY);
+                setActiveSession(null);
+                onBack();
+              }
+            }}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <div className="text-center">
+            <h2 className="font-bold text-lg text-gray-900">{room.name}</h2>
+            <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+              Session Active
+            </span>
           </div>
-          {imagePreview && (
-              <div className="fixed inset-0 bg-black/70 z-[80] flex items-center justify-center p-4" onClick={() => setImagePreview(null)}>
-                  <div className="relative bg-black rounded-2xl overflow-hidden max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
-                      <button
-                          className="absolute top-3 right-3 bg-white/90 rounded-full p-2 shadow-md border border-stone-200 hover:bg-stone-100"
-                          onClick={() => setImagePreview(null)}
-                          aria-label="Close task image"
-                      >
-                          <ArrowLeft className="w-5 h-5 text-stone-700" />
-                      </button>
-                      <img src={imagePreview} alt="Task context" className="w-full max-h-[85vh] object-contain bg-black" />
-                  </div>
-              </div>
-          )}
+          <button 
+            onClick={() => setShowAllTasks(!showAllTasks)}
+            className={`p-2 rounded-full ${showAllTasks ? 'bg-blue-100 text-blue-600' : 'text-gray-400 bg-gray-100'}`}
+          >
+            <Filter className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="w-full bg-gray-200 rounded-full h-2.5">
+          <div 
+            className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out" 
+            style={{ width: `${Math.min(progress, 100)}%` }}
+          ></div>
+        </div>
+        <div className="flex justify-between text-xs text-gray-500 mt-1">
+          <span>{activeSession.completedTasks.length} done</span>
+          <span>{visibleTasks.length - activeSession.completedTasks.length} remaining</span>
+        </div>
       </div>
+
+      {/* Task List */}
+      <div className="flex-1 overflow-y-auto p-4 pb-24">
+        <div className="space-y-3">
+          {visibleTasks.length === 0 && !showAllTasks && (
+            <div className="text-center py-10 text-gray-500">
+              <p>No tasks due right now!</p>
+              <button onClick={() => setShowAllTasks(true)} className="text-blue-500 text-sm mt-2 font-medium">
+                Show all tasks anyway
+              </button>
+            </div>
+          )}
+          
+          {visibleTasks.map((task) => {
+            const isCompleted = activeSession.completedTasks.includes(task.id);
+            return (
+              <div 
+                key={task.id}
+                onClick={() => toggleTask(task.id)} // Touch Target Improvement: Whole row clickable
+                className={`
+                  flex items-center p-4 rounded-xl border transition-all cursor-pointer active:scale-[0.99]
+                  ${isCompleted 
+                    ? 'bg-blue-50 border-blue-200 shadow-sm' 
+                    : 'bg-white border-gray-100 shadow-sm hover:border-gray-200'}
+                `}
+              >
+                <div className={`
+                  w-6 h-6 rounded-full border-2 flex items-center justify-center mr-4 transition-colors
+                  ${isCompleted ? 'bg-blue-600 border-blue-600' : 'border-gray-300'}
+                `}>
+                  {isCompleted && <CheckCircle className="w-4 h-4 text-white" />}
+                </div>
+                <div className="flex-1">
+                  <h3 className={`font-medium ${isCompleted ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
+                    {task.title}
+                  </h3>
+                  {task.frequency && (
+                    <span className="text-xs text-gray-400 capitalize bg-gray-50 px-1.5 py-0.5 rounded mr-2">
+                      {task.frequency}
+                    </span>
+                  )}
+                  {task.is_forced && !isCompleted && (
+                    <span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded font-medium">
+                      Must Do
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Sticky Mobile Footer */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 z-20 pb-safe">
+        {activeSession.completedTasks.length < visibleTasks.length ? (
+            <div className="flex gap-2">
+                <button
+                    onClick={() => handleFinishSession('complete_selected')}
+                    disabled={loading}
+                    className="flex-1 bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-xl font-semibold shadow-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                    Finish (Leave rest)
+                </button>
+                <button
+                    onClick={() => handleFinishSession('complete_and_skip_rest')}
+                    disabled={loading}
+                    className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                    Mark Rest Skipped
+                </button>
+            </div>
+        ) : (
+             <button
+                onClick={() => handleFinishSession('complete_selected')}
+                disabled={loading}
+                className="w-full bg-green-600 text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+                <CheckCircle className="w-5 h-5" />
+                Finish Session
+            </button>
+        )}
+      </div>
+    </div>
   );
-};
+}
