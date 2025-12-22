@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Task, Priority, Status } from '../types';
-import { ArrowLeft, Trash, Plus, Repeat, Edit, Check, X, AlertTriangle, Download, Upload, Link } from 'lucide-react';
+import { ArrowLeft, Trash, Plus, Repeat, Edit, Check, X, AlertTriangle, Download, Upload, Link, Image as ImageIcon, Maximize2 } from 'lucide-react';
+import { getTaskImagePublicUrl } from '../lib/storage';
 
 interface InventoryViewProps {
   inventory: Task[];
@@ -9,8 +10,8 @@ interface InventoryViewProps {
   availableZones: string[];
   onAddZone: (zone: string) => void;
   onDeleteZone: (zone: string) => void;
-  onAddTask: (task: Task) => void;
-  onUpdateTask: (id: string, updates: Partial<Task>) => void;
+  onAddTask: (task: Task, imageFile?: File | null) => void;
+  onUpdateTask: (id: string, updates: Partial<Task>, options?: { imageFile?: File | null; removeImage?: boolean }) => void;
   onDeleteTask: (id: string) => void;
   onExport: () => void;
   onImport: (file: File) => void;
@@ -53,10 +54,15 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingRecurrenceId, setEditingRecurrenceId] = useState<string | null>(null);
   const [tempRecurrence, setTempRecurrence] = useState<number>(0);
+  const [newItemImage, setNewItemImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [removeImage, setRemoveImage] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   const lastZoneSelectionRef = useRef<number>(0);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const defaultZone = availableZones.length > 0 ? availableZones[0] : '';
   const startZone = (initialFilter && initialFilter !== 'All') ? initialFilter : defaultZone;
@@ -97,14 +103,17 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   useEffect(() => {
       if (!isAdding) {
           setEditingId(null);
-          setNewItem({ 
-            zone: filterZone !== 'All' ? filterZone : (availableZones[0] || ''), 
-            label: '', 
+          setNewItem({
+            zone: filterZone !== 'All' ? filterZone : (availableZones[0] || ''),
+            label: '',
             duration: 10,
             priority: 2,
             recurrence: 0,
             dependency: null
         });
+        setNewItemImage(null);
+        setImagePreview(null);
+        setRemoveImage(false);
       }
   }, [isAdding, filterZone, availableZones]);
 
@@ -156,7 +165,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       }
 
       if (editingId) {
-          onUpdateTask(editingId, newItem);
+          onUpdateTask(editingId, newItem, { imageFile: newItemImage, removeImage });
           setEditingId(null);
       } else {
           const id = Math.random().toString(36).substr(2, 9);
@@ -169,10 +178,13 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               created_at: new Date().toISOString(),
               user_id: '' // Managed by hook
           } as Task;
-          onAddTask(taskToAdd);
+          onAddTask(taskToAdd, newItemImage);
       }
-      
+
       setIsAdding(false);
+      setNewItemImage(null);
+      setImagePreview(null);
+      setRemoveImage(false);
   };
 
   const handleEdit = (task: Task) => {
@@ -186,6 +198,9 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       });
       setEditingId(task.id);
       setIsAdding(true);
+      setImagePreview(getTaskImagePublicUrl(task.image_url));
+      setRemoveImage(false);
+      setNewItemImage(null);
   };
 
   const handleDeleteClick = (id: string) => {
@@ -216,6 +231,22 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const startEditingRecurrence = (task: Task) => {
       setEditingRecurrenceId(task.id);
       setTempRecurrence(task.recurrence);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          setNewItemImage(file);
+          setImagePreview(URL.createObjectURL(file));
+          setRemoveImage(false);
+      }
+  };
+
+  const clearSelectedImage = () => {
+      setNewItemImage(null);
+      setImagePreview(null);
+      setRemoveImage(editingId ? true : false);
+      if (imageInputRef.current) imageInputRef.current.value = '';
   };
 
   const saveRecurrence = (id: string) => {
@@ -304,6 +335,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                   </div>
               ) : displayedInventory.map(task => {
                   const dependencyTask = task.dependency ? inventory.find(t => t.id === task.dependency) : null;
+                  const imageUrl = getTaskImagePublicUrl(task.image_url);
                   return (
                     <div key={task.id} className={`card-panel p-4 rounded-2xl flex justify-between items-center group transition-all card-hover ${task.status === 'completed' ? 'opacity-75 bg-white/70' : 'bg-white/95'}`}>
                         <div className="flex items-start gap-4 flex-1">
@@ -357,6 +389,19 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                             <Link className="w-3 h-3" />
                                             <span className="truncate">{dependencyTask.label}</span>
                                         </div>
+                                    )}
+                                    {imageUrl && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); setLightboxImage(imageUrl); }}
+                                            className="relative group/image"
+                                            title="View task photo"
+                                        >
+                                            <img src={imageUrl} alt="Task" className="w-10 h-10 rounded-lg object-cover border border-[color:var(--border)]" />
+                                            <span className="absolute inset-0 bg-black/20 opacity-0 group-hover/image:opacity-100 rounded-lg flex items-center justify-center transition-opacity">
+                                                <Maximize2 className="w-4 h-4 text-white" />
+                                            </span>
+                                        </button>
                                     )}
                                 </div>
                             </div>
@@ -432,12 +477,60 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
 
                           <div className="space-y-2">
                               <label className="text-xs font-bold text-stone-500 uppercase tracking-widest">Task Name</label>
-                              <input 
+                              <input
                                   className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all placeholder:text-stone-400 font-medium"
                                   placeholder="e.g. Wipe Kitchen Counters"
                                   value={newItem.label}
                                   onChange={e => setNewItem({...newItem, label: e.target.value})}
                               />
+                          </div>
+
+                          <div className="space-y-2">
+                              <label className="text-xs font-bold text-stone-500 uppercase tracking-widest flex items-center gap-2">
+                                  <ImageIcon className="w-4 h-4" /> Task Photo (optional)
+                              </label>
+                              <div className="flex items-center gap-3 flex-wrap">
+                                  <button
+                                      type="button"
+                                      onClick={() => imageInputRef.current?.click()}
+                                      className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl border border-stone-200 text-sm font-bold transition-colors"
+                                  >
+                                      {imagePreview ? 'Replace Image' : 'Upload Image'}
+                                  </button>
+                                  {imagePreview && (
+                                      <div className="relative">
+                                          <img src={imagePreview} alt="Task" className="w-16 h-16 object-cover rounded-lg border border-[color:var(--border)]" />
+                                          <button
+                                              type="button"
+                                              onClick={clearSelectedImage}
+                                              className="absolute -top-2 -right-2 bg-white border border-stone-200 rounded-full p-1 shadow-sm text-stone-500 hover:text-red-500"
+                                              aria-label="Remove image"
+                                          >
+                                              <X className="w-3 h-3" />
+                                          </button>
+                                      </div>
+                                  )}
+                                  {!imagePreview && editingId && removeImage && (
+                                      <span className="text-xs text-stone-500 font-medium">Image will be removed</span>
+                                  )}
+                                  <input
+                                      ref={imageInputRef}
+                                      type="file"
+                                      accept="image/*"
+                                      capture="environment"
+                                      onChange={handleImageChange}
+                                      className="hidden"
+                                  />
+                                  {editingId && imagePreview && (
+                                      <button
+                                          type="button"
+                                          onClick={clearSelectedImage}
+                                          className="text-xs text-red-600 font-bold underline"
+                                      >
+                                          Remove image
+                                      </button>
+                                  )}
+                              </div>
                           </div>
 
                               <div className="grid grid-cols-2 gap-4">
@@ -546,6 +639,21 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                               {editingId ? "Update Task" : "Create Task"}
                           </button>
                       </div>
+                  </div>
+              </div>
+          )}
+
+          {lightboxImage && (
+              <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setLightboxImage(null)}>
+                  <div className="relative bg-white rounded-2xl overflow-hidden shadow-2xl max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
+                      <button
+                          className="absolute top-3 right-3 bg-white/90 rounded-full p-2 shadow-md border border-stone-200 hover:bg-stone-100"
+                          onClick={() => setLightboxImage(null)}
+                          aria-label="Close image preview"
+                      >
+                          <X className="w-5 h-5 text-stone-600" />
+                      </button>
+                      <img src={lightboxImage} alt="Task" className="w-full h-full max-h-[80vh] object-contain bg-black" />
                   </div>
               </div>
           )}
