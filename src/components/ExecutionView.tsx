@@ -35,6 +35,9 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
   const [noTasksFound, setNoTasksFound] = useState(false);
   const [skippedTaskIds, setSkippedTaskIds] = useState<string[]>([]);
   const [sessionCompletedIds, setSessionCompletedIds] = useState<string[]>([]);
+  const [taskElapsed, setTaskElapsed] = useState<Record<string, number>>({});
+  const [activeTaskTimer, setActiveTaskTimer] = useState<{ taskId: string; startedAt: number } | null>(null);
+  const currentTaskIdRef = React.useRef<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const SESSION_STORAGE_KEY = 'easyCleanActiveSession';
 
@@ -51,14 +54,17 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
       if (contextMatches) {
         setSessionCompletedIds(parsed.completedIds || []);
         setSkippedTaskIds(parsed.skippedIds || []);
+        setTaskElapsed(parsed.elapsed || {});
+        setActiveTaskTimer(parsed.activeTaskTimer || null);
       } else {
         setSessionCompletedIds([]);
         setSkippedTaskIds([]);
+        setTaskElapsed({});
+        setActiveTaskTimer(null);
       }
     } catch (err) {
       console.error('Failed to restore session state', err);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeZone, activeLevel, timeWindow]);
 
   useEffect(() => {
@@ -67,13 +73,15 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
         context: { activeZone, activeLevel, timeWindow },
         completedIds: sessionCompletedIds,
         skippedIds: skippedTaskIds,
+        elapsed: taskElapsed,
+        activeTaskTimer,
         updatedAt: Date.now()
       };
       localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(payload));
     } catch (err) {
       console.error('Failed to persist session state', err);
     }
-  }, [activeZone, activeLevel, sessionCompletedIds, skippedTaskIds, timeWindow]);
+  }, [activeZone, activeLevel, sessionCompletedIds, skippedTaskIds, taskElapsed, activeTaskTimer, timeWindow]);
 
   const clearSessionState = () => {
     try {
@@ -83,7 +91,13 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
     }
     setSessionCompletedIds([]);
     setSkippedTaskIds([]);
+    setTaskElapsed({});
+    setActiveTaskTimer(null);
   };
+
+  useEffect(() => {
+    currentTaskIdRef.current = sessionTasks[currentTaskIndex]?.id || null;
+  }, [sessionTasks, currentTaskIndex]);
 
   const createTaskComparator = (completedOverrides: Set<string> = new Set()) => {
     return (a: Task, b: Task) => {
@@ -152,9 +166,51 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
           setNoTasksFound(true);
     }
 
+    const previousTaskId = currentTaskIdRef.current;
+    let nextIndex = 0;
+
+    if (previousTaskId) {
+      const foundIndex = queue.findIndex(t => t.id === previousTaskId);
+      if (foundIndex !== -1) {
+        nextIndex = foundIndex;
+      } else if (queue.length > 0) {
+        nextIndex = Math.min(currentTaskIndex, queue.length - 1);
+      }
+    }
+
     setSessionTasks(queue);
-    setCurrentTaskIndex(0);
-  }, [inventory, timeWindow, activeZone, activeLevel, skippedTaskIds, sessionCompletedIds, zones]);
+    setCurrentTaskIndex(queue.length === 0 ? 0 : nextIndex);
+  }, [inventory, timeWindow, activeZone, activeLevel, skippedTaskIds, sessionCompletedIds, zones, currentTaskIndex]);
+
+  const recordActiveTaskTime = () => {
+    if (!activeTaskTimer) return;
+    const now = Date.now();
+    setTaskElapsed(prev => ({
+      ...prev,
+      [activeTaskTimer.taskId]: (prev[activeTaskTimer.taskId] || 0) + (now - activeTaskTimer.startedAt)
+    }));
+    setActiveTaskTimer(null);
+  };
+
+  useEffect(() => {
+    return () => {
+      recordActiveTaskTime();
+    };
+  }, []);
+
+  useEffect(() => {
+    recordActiveTaskTime();
+
+    if (sessionTasks.length === 0) {
+      setActiveTaskTimer(null);
+      return;
+    }
+
+    const current = sessionTasks[currentTaskIndex];
+    if (current) {
+      setActiveTaskTimer({ taskId: current.id, startedAt: Date.now() });
+    }
+  }, [currentTaskIndex, sessionTasks]);
 
   const getDurationStyles = (duration: number) => {
     if (duration <= 15) return "bg-emerald-50 text-emerald-700 border-emerald-200";
@@ -167,6 +223,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
   const handleComplete = () => {
     const task = sessionTasks[currentTaskIndex];
     if (!task) return;
+    recordActiveTaskTime();
     onUpdateTask(task.id, { status: 'completed' });
     setSessionCompletedIds(prev => prev.includes(task.id) ? prev : [...prev, task.id]);
     setCurrentTaskIndex(prev => Math.min(prev + 1, sessionTasks.length));
@@ -180,6 +237,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
   }, [sessionCompletedIds.length, sessionTasks.length]);
 
   const handleEndSession = () => {
+    recordActiveTaskTime();
     clearSessionState();
     onBack();
   };
@@ -224,6 +282,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
   const handleSkip = () => {
       const task = sessionTasks[currentTaskIndex];
       if (!task) return;
+      recordActiveTaskTime();
       setSkippedTaskIds(prev => prev.includes(task.id) ? prev : [...prev, task.id]);
   };
 
@@ -247,6 +306,9 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
   ].sort((a, b) => futureComparator(a.task, b.task));
 
   const taskImageUrl = getTaskImagePublicUrl(currentTask?.image_url);
+  const processedCount = sessionCompletedIds.length + skippedTaskIds.length;
+  const totalSteps = processedCount + sessionTasks.length;
+  const displayedStep = Math.min(processedCount + currentTaskIndex + 1, totalSteps || 1);
   
     if (sessionTasks.length === 0) {
          return (
@@ -293,7 +355,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                     <ArrowLeft className="w-4 h-4" /> End Session
                 </button>
                 <div className="text-[10px] sm:text-xs font-bold text-emerald-700 uppercase tracking-[0.28em] bg-emerald-50 border border-[color:var(--border)] px-4 py-2 rounded-full shadow-sm">
-                    Step {currentTaskIndex + 1} <span className="text-emerald-400">/</span> {sessionTasks.length}
+                    Step {displayedStep} <span className="text-emerald-400">/</span> {processedCount + sessionTasks.length}
                 </div>
             </div>
 
