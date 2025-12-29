@@ -251,7 +251,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
     const currentTask = sessionTasks[currentTaskIndex];
     if (!currentTask) return;
 
-    const dependencyIncomplete = (depId?: string) => {
+    const dependencyIncomplete = (depId?: string | null) => {
       if (!depId) return false;
       if (sessionCompletedIds.includes(depId)) return false;
       const dep = inventory.find(i => i.id === depId);
