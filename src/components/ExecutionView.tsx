@@ -121,6 +121,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
   };
 
   useEffect(() => {
+    const completedOverride = new Set(sessionCompletedIds);
     const completedDuration = sessionCompletedIds.reduce((total, id) => {
       const task = inventory.find(t => t.id === id);
       return task ? total + task.duration : total;
@@ -130,7 +131,11 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
 
     // Initial Filter: Pending tasks not skipped
     let pending = inventory.filter(
-      t => t.status === 'pending' && !skippedTaskIds.includes(t.id) && isTaskDue(t)
+      t =>
+        t.status === 'pending' &&
+        !completedOverride.has(t.id) &&
+        !skippedTaskIds.includes(t.id) &&
+        isTaskDue(t)
     );
 
     // Zone Filter
@@ -145,16 +150,19 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
         pending = pending.filter(t => matchingZones.includes(t.zone));
     }
 
-    const sorted = pending.sort(createTaskComparator());
+    const dependencyIncomplete = (depId: string) => {
+      if (completedOverride.has(depId)) return false;
+      const dep = inventory.find(i => i.id === depId);
+      return dep ? dep.status !== 'completed' : false;
+    };
+
+    const sorted = pending.sort(createTaskComparator(completedOverride));
 
     let accumulatedTime = 0;
     const queue: Task[] = [];
     
     for (const task of sorted) {
-        if (task.dependency) {
-             const dep = inventory.find(i => i.id === task.dependency);
-             if(dep && dep.status !== 'completed') continue;
-        }
+        if (task.dependency && dependencyIncomplete(task.dependency)) continue;
 
         if (accumulatedTime + task.duration <= remainingTime) {
             queue.push(task);
@@ -173,8 +181,6 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
       const foundIndex = queue.findIndex(t => t.id === previousTaskId);
       if (foundIndex !== -1) {
         nextIndex = foundIndex;
-      } else if (queue.length > 0) {
-        nextIndex = Math.min(currentTaskIndex, queue.length - 1);
       }
     }
 
@@ -226,7 +232,6 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
     recordActiveTaskTime();
     onUpdateTask(task.id, { status: 'completed' });
     setSessionCompletedIds(prev => prev.includes(task.id) ? prev : [...prev, task.id]);
-    setCurrentTaskIndex(prev => Math.min(prev + 1, sessionTasks.length));
   };
 
   useEffect(() => {
@@ -246,12 +251,19 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
     const currentTask = sessionTasks[currentTaskIndex];
     if (!currentTask) return;
 
+    const dependencyIncomplete = (depId?: string) => {
+      if (!depId) return false;
+      if (sessionCompletedIds.includes(depId)) return false;
+      const dep = inventory.find(i => i.id === depId);
+      return dep ? dep.status !== 'completed' : false;
+    };
+
     // Filter candidates based on active logic (Zone OR Level)
     const candidates = inventory.filter(t => {
         if (t.status !== 'pending') return false;
         if (skippedTaskIds.includes(t.id)) return false;
         if (sessionTasks.find(st => st.id === t.id)) return false;
-        if (inventory.some(i => i.id === t.dependency && i.status !== 'completed')) return false;
+        if (dependencyIncomplete(t.dependency)) return false;
 
         // Apply same filters as main effect
         if (activeZone && t.zone !== activeZone) return false;
@@ -288,7 +300,8 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
 
   const currentTask = sessionTasks[currentTaskIndex];
   const nextTasks = sessionTasks.slice(currentTaskIndex + 1);
-  const futureComparator = createTaskComparator(new Set(currentTask ? [currentTask.id] : []));
+  const completedOverrides = new Set([...sessionCompletedIds, ...(currentTask ? [currentTask.id] : [])]);
+  const futureComparator = createTaskComparator(completedOverrides);
   const conditionalNextTasks = inventory
     .filter(t =>
       t.status === 'pending' &&
