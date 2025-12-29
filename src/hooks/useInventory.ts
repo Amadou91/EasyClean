@@ -186,18 +186,31 @@ export function useInventory() {
         let nextImage = existing?.image_url ?? null;
         if (removeImage) nextImage = null;
 
-        // Optimistic update
-        setInventory(prev => prev.map(t => t.id === id ? { ...t, ...updates, image_url: nextImage } : t));
-
         const dbUpdates: Partial<Task> & { completed_at?: string | null; completed_by?: string | null } = { ...updates };
+        const nextStatePatch: Partial<Task> = { ...updates };
+
         if (updates.status === 'completed') {
-            dbUpdates.completed_at = new Date().toISOString();
+            const completedAt = new Date().toISOString();
+            dbUpdates.completed_at = completedAt;
             dbUpdates.completed_by = user.id;
+            nextStatePatch.completed_at = completedAt;
+            nextStatePatch.completed_by = user.id;
         }
+
+        if (updates.status === 'pending') {
+            dbUpdates.completed_at = null;
+            dbUpdates.completed_by = null;
+            nextStatePatch.completed_at = null;
+            nextStatePatch.completed_by = null;
+        }
+
+        // Optimistic update
+        setInventory(prev => prev.map(t => t.id === id ? { ...t, ...nextStatePatch, image_url: nextImage } : t));
 
         if (removeImage && existing?.image_url) {
             await removeTaskImage(existing.image_url);
             dbUpdates.image_url = null;
+            nextImage = null;
         }
 
         if (imageFile) {
@@ -205,12 +218,13 @@ export function useInventory() {
             if (!uploadResult.error) {
                 nextImage = uploadResult.path;
                 dbUpdates.image_url = nextImage;
+                nextStatePatch.image_url = nextImage;
             }
         }
 
         await supabase.from('tasks').update(dbUpdates).eq('id', id);
         // Sync final state (in case DB trigger changed something)
-        setInventory(prev => prev.map(t => t.id === id ? { ...t, ...updates, image_url: nextImage } : t));
+        setInventory(prev => prev.map(t => t.id === id ? { ...t, ...nextStatePatch, image_url: nextImage } : t));
     };
 
     const deleteTask = async (id: string) => {
