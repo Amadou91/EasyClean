@@ -42,6 +42,21 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
   const SESSION_STORAGE_KEY = 'easyCleanActiveSession';
 
   useEffect(() => {
+    const completedTasks = new Set(inventory.filter(t => t.status === 'completed').map(t => t.id));
+    const pendingTasks = new Set(inventory.filter(t => t.status === 'pending').map(t => t.id));
+
+    setSessionCompletedIds(prev => {
+      const filtered = prev.filter(id => completedTasks.has(id));
+      return filtered.length === prev.length ? prev : filtered;
+    });
+
+    setSkippedTaskIds(prev => {
+      const filtered = prev.filter(id => pendingTasks.has(id));
+      return filtered.length === prev.length ? prev : filtered;
+    });
+  }, [inventory]);
+
+  useEffect(() => {
     try {
       const raw = localStorage.getItem(SESSION_STORAGE_KEY);
       if (!raw) return;
