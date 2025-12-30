@@ -1,6 +1,7 @@
 export type Priority = 1 | 2 | 3;
 export type Status = 'pending' | 'completed' | 'blocked';
 export type Level = 'upstairs' | 'downstairs';
+export type LevelFilter = Level | 'all';
 
 export interface Zone {
   name: string;

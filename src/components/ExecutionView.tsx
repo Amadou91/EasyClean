@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Task, Zone, Level } from '../types';
+import { Task, Zone, LevelFilter } from '../types';
 import { Check, Clock, ArrowLeft, RotateCw, SkipForward, Lock } from 'lucide-react';
 import { getTaskImagePublicUrl } from '../lib/storage';
 import { isTaskDue } from '../lib/taskUtils';
@@ -10,7 +10,7 @@ interface ExecutionViewProps {
   onBack: () => void;
   timeWindow: number;
   activeZone: string | null;
-  activeLevel: Level | null; // New prop for filtering by level
+  activeLevel: LevelFilter | null; // New prop for filtering by level
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
 }
 
@@ -159,7 +159,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
     }
 
     // Level Filter (Supersedes Zone filter usually, but logic allows both if ever needed)
-    if (activeLevel) {
+    if (activeLevel && activeLevel !== 'all') {
         // Find all zone names that match this level
         const matchingZones = zones.filter(z => z.level === activeLevel).map(z => z.name);
         pending = pending.filter(t => matchingZones.includes(t.zone));
@@ -282,7 +282,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
 
         // Apply same filters as main effect
         if (activeZone && t.zone !== activeZone) return false;
-        if (activeLevel) {
+        if (activeLevel && activeLevel !== 'all') {
              const taskZoneLevel = zones.find(z => z.name === t.zone)?.level;
              if (taskZoneLevel !== activeLevel) return false;
         }
@@ -324,7 +324,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
       !skippedTaskIds.includes(t.id) &&
       !sessionTasks.find(st => st.id === t.id) &&
       (!activeZone || t.zone === activeZone) &&
-      (!activeLevel || zones.find(z => z.name === t.zone)?.level === activeLevel)
+      (!activeLevel || activeLevel === 'all' || zones.find(z => z.name === t.zone)?.level === activeLevel)
     )
     .sort(futureComparator);
 
@@ -346,7 +346,7 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                 </div>
                 <div>
                     <h3 className="text-3xl font-serif text-stone-900 mb-2">
-                        {noTasksFound ? "Time Limit Reached" : (activeZone ? `${activeZone} Clear!` : activeLevel ? `${activeLevel === 'upstairs' ? 'Upstairs' : 'Downstairs'} Clear!` : "All Caught Up!")}
+                        {noTasksFound ? "Time Limit Reached" : (activeZone ? `${activeZone} Clear!` : activeLevel ? `${activeLevel === 'upstairs' ? 'Upstairs' : activeLevel === 'downstairs' ? 'Downstairs' : 'All Areas'} Clear!` : "All Caught Up!")}
                     </h3>
                     <p className="text-stone-600 max-w-xs mx-auto text-sm leading-relaxed">
                         {noTasksFound
@@ -456,8 +456,9 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                 <div>
                     <h4 className="text-[10px] font-bold text-stone-600 uppercase tracking-[0.28em] mb-4 ml-2">Up Next</h4>
                     <div className="space-y-3">
-                        {upcomingTasks.map(({ task: t, isUnlock }) => (
-                            isUnlock ? (
+                        {upcomingTasks.map(({ task: t, isUnlock }) => {
+                            const taskZone = zones.find(z => z.name === t.zone);
+                            return isUnlock ? (
                                 <div key={t.id} className="p-4 sm:p-5 rounded-2xl bg-white border border-dashed border-emerald-300/80 shadow-sm text-sm text-stone-700">
                                     <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-700 mb-2 uppercase tracking-[0.18em]">
                                         <Lock className="w-4 h-4" /> Unlocks next
@@ -465,6 +466,14 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                                     <div className="flex justify-between items-center gap-3 opacity-80">
                                         <div className="flex flex-col flex-1 min-w-0">
                                             <span className="truncate font-medium">{t.label}</span>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-[10px] font-bold text-stone-600 uppercase tracking-[0.2em] bg-[color:var(--surface-muted)] border border-[color:var(--border)] px-2 py-0.5 rounded-full">{t.zone}</span>
+                                                {taskZone?.level && (
+                                                    <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded uppercase tracking-[0.18em]">
+                                                        {taskZone.level}
+                                                    </span>
+                                                )}
+                                            </div>
                                             <span className="text-[11px] text-stone-500">Becomes next after this task</span>
                                         </div>
                                         <div className="flex items-center gap-3">
@@ -478,7 +487,19 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                                 </div>
                             ) : (
                                 <div key={t.id} className="flex justify-between items-center p-4 sm:p-5 rounded-2xl bg-white/90 border border-[color:var(--border)] shadow-sm text-sm text-stone-800 hover:border-emerald-300 transition-colors">
-                                    <span className="truncate flex-1 font-medium">{t.label}</span>
+                                    <div className="flex flex-col flex-1 min-w-0">
+                                        <span className="truncate font-medium">{t.label}</span>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="text-[10px] font-bold text-stone-600 uppercase tracking-[0.2em] bg-[color:var(--surface-muted)] border border-[color:var(--border)] px-2 py-0.5 rounded-full">
+                                                {t.zone}
+                                            </span>
+                                            {taskZone?.level && (
+                                                <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded uppercase tracking-[0.18em]">
+                                                    {taskZone.level}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
                                     <div className="flex items-center gap-3">
                                         {t.recurrence > 0 && <RotateCw className="w-3 h-3 text-emerald-400" />}
                                         <PriorityBadge priority={t.priority || 2} />
@@ -487,8 +508,8 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                                         </span>
                                     </div>
                                 </div>
-                            )
-                        ))}
+                            );
+                        })}
                         {upcomingTasks.length === 0 && (
                             <div className="text-sm text-stone-500 italic text-center py-6 bg-white/70 rounded-2xl border border-dashed border-[color:var(--border)]">No further tasks in queue.</div>
                         )}
