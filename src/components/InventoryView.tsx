@@ -598,15 +598,29 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                   
                                   {newItem.recurrence > 0 && (
                                       <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-300 pl-7">
-                                           <span className="text-xs text-stone-500 font-bold">Every</span>
-                                           <input 
-                                              type="number" 
-                                              min="1"
-                                              className="w-16 bg-white border border-stone-200 rounded-lg text-stone-900 text-sm outline-none text-center font-bold py-1 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all"
-                                              value={newItem.recurrence}
-                                              onChange={e => setNewItem({...newItem, recurrence: parseInt(e.target.value) || 1})}
-                                           />
-                                           <span className="text-xs text-stone-500 font-bold">days (Reappears at 7 AM)</span>
+                                          <span className="text-xs text-stone-500 font-bold">Every</span>
+                                          {isMobile ? (
+                                              <div className="flex-1 bg-white border border-stone-200 rounded-lg px-3 py-1.5 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100 transition-all">
+                                                  <select
+                                                      className="w-full bg-transparent text-stone-900 text-sm font-bold outline-none cursor-pointer"
+                                                      value={newItem.recurrence}
+                                                      onChange={e => setNewItem({...newItem, recurrence: parseInt(e.target.value) || 1})}
+                                                  >
+                                                      {Array.from({ length: 60 }, (_, i) => i + 1).map(day => (
+                                                          <option key={day} value={day}>{day} day{day > 1 ? 's' : ''}</option>
+                                                      ))}
+                                                  </select>
+                                              </div>
+                                          ) : (
+                                              <input 
+                                                  type="number" 
+                                                  min="1"
+                                                  className="w-16 bg-white border border-stone-200 rounded-lg text-stone-900 text-sm outline-none text-center font-bold py-1 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all"
+                                                  value={newItem.recurrence}
+                                                  onChange={e => setNewItem({...newItem, recurrence: parseInt(e.target.value) || 1})}
+                                              />
+                                          )}
+                                          <span className="text-[11px] text-stone-500 font-semibold">Reappears at 7 AM</span>
                                       </div>
                                   )}
                               </div>
