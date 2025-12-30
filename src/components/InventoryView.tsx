@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Task, Priority, Status, Zone, Level } from '../types';
-import { ArrowLeft, Trash, Plus, Repeat, Edit, Check, X, AlertTriangle, Download, Upload, Link, Image as ImageIcon, Maximize2, Settings2 } from 'lucide-react';
+import { ArrowLeft, Trash, Plus, Repeat, Edit, Check, X, AlertTriangle, Download, Upload, Link, Image as ImageIcon, Maximize2, Settings2, Search } from 'lucide-react';
 import { getTaskImagePublicUrl } from '../lib/storage';
 
 interface InventoryViewProps {
@@ -56,6 +56,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [removeImage, setRemoveImage] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -126,20 +127,25 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   }, []);
 
   const displayedInventory = useMemo(() => {
+      const query = searchQuery.trim().toLowerCase();
       const tasks = filterZone === 'All'
           ? [...inventory]
           : inventory.filter(t => t.zone === filterZone);
 
+      const filteredTasks = query
+          ? tasks.filter(t => t.label.toLowerCase().includes(query))
+          : tasks;
+
       if (filterZone === 'All') {
-          return tasks.sort((a, b) => {
+          return filteredTasks.sort((a, b) => {
               const priorityA = a.priority || 3;
               const priorityB = b.priority || 3;
               if (priorityA !== priorityB) return priorityA - priorityB;
               return a.duration - b.duration;
           });
       }
-      return tasks;
-  }, [filterZone, inventory]);
+      return filteredTasks;
+  }, [filterZone, inventory, searchQuery]);
 
   const getDurationStyles = (duration: number) => {
     if (duration <= 15) return "bg-emerald-50 text-emerald-700 border-emerald-200";
@@ -256,6 +262,19 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                       <Upload className="w-5 h-5" />
                   </button>
                   <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
+              </div>
+          </div>
+
+          <div className="flex justify-end px-1 mb-2">
+              <div className="relative w-full sm:w-72">
+                  <Search className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
+                  <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search tasks"
+                      className="w-full bg-white border border-[color:var(--border)] rounded-xl pl-9 pr-3 py-2.5 text-sm text-stone-800 placeholder:text-stone-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all shadow-sm"
+                  />
               </div>
           </div>
 
