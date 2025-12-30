@@ -474,7 +474,6 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                                                     </span>
                                                 )}
                                             </div>
-                                            <span className="text-[11px] text-stone-500">Becomes next after this task</span>
                                         </div>
                                         <div className="flex items-center gap-3">
                                             {t.recurrence > 0 && <RotateCw className="w-3 h-3 text-emerald-400" />}
