@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Task, Zone, Level } from '../types';
-import { Clock, Check, Play, Edit, Zap, ArrowUp, ArrowDown, X } from 'lucide-react';
+import { Task, Zone, LevelFilter } from '../types';
+import { Clock, Check, Play, Edit, Zap, ArrowUp, ArrowDown, X, Layers } from 'lucide-react';
 import { isTaskDue } from '../lib/taskUtils';
 
 interface DashboardViewProps {
@@ -10,7 +10,7 @@ interface DashboardViewProps {
   selectedTime: number;
   setSelectedTime: (time: number) => void;
   onTackleArea: (zone: string) => void;
-  onStartExecution: (level: Level | null) => void;
+  onStartExecution: (level: LevelFilter | null) => void;
 }
 
 const Countdown = () => {
@@ -194,7 +194,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </p>
                     <div className="grid grid-cols-1 gap-4">
                         <button
-                            onClick={() => onStartExecution('upstairs')}
+                            onClick={() => { onStartExecution('upstairs'); setShowLevelPrompt(false); }}
                             className="flex items-center justify-between p-4 rounded-2xl border border-stone-200 hover:border-emerald-400 hover:bg-emerald-50 transition-all group"
                         >
                             <div className="flex items-center gap-3">
@@ -205,7 +205,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             </div>
                         </button>
                         <button
-                            onClick={() => onStartExecution('downstairs')}
+                            onClick={() => { onStartExecution('downstairs'); setShowLevelPrompt(false); }}
                             className="flex items-center justify-between p-4 rounded-2xl border border-stone-200 hover:border-teal-400 hover:bg-teal-50 transition-all group"
                         >
                             <div className="flex items-center gap-3">
@@ -213,6 +213,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                     <ArrowDown className="w-5 h-5 text-stone-600 group-hover:text-teal-600" />
                                 </div>
                                 <span className="font-bold text-stone-800 group-hover:text-teal-800">Downstairs</span>
+                            </div>
+                        </button>
+                        <button
+                            onClick={() => { onStartExecution('all'); setShowLevelPrompt(false); }}
+                            className="flex items-center justify-between p-4 rounded-2xl border border-stone-200 hover:border-indigo-400 hover:bg-indigo-50 transition-all group"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-stone-100 rounded-xl group-hover:bg-white transition-colors">
+                                    <Layers className="w-5 h-5 text-stone-600 group-hover:text-indigo-600" />
+                                </div>
+                                <span className="font-bold text-stone-800 group-hover:text-indigo-800">All Areas</span>
                             </div>
                         </button>
                     </div>

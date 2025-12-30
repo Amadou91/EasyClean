@@ -6,14 +6,14 @@ import { InventoryView } from './components/InventoryView';
 import { LoginView } from './components/LoginView';
 import { Home, LogOut } from 'lucide-react';
 import { supabase } from './lib/supabase';
-import { Level } from './types';
+import { LevelFilter } from './types';
 
 export default function App() {
   const [view, setView] = useState<'dashboard' | 'execute' | 'inventory'>('dashboard');
   const [filterZone, setFilterZone] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState(30);
   const [activeZone, setActiveZone] = useState<string | null>(null);
-  const [activeLevel, setActiveLevel] = useState<Level | null>(null); // New State
+  const [activeLevel, setActiveLevel] = useState<LevelFilter | null>(null); // New State
   
   const {
     inventory,
