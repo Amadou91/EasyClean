@@ -457,7 +457,6 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                     <h4 className="text-[10px] font-bold text-stone-600 uppercase tracking-[0.28em] mb-4 ml-2">Up Next</h4>
                     <div className="space-y-3">
                         {upcomingTasks.map(({ task: t, isUnlock }) => {
-                            const taskZone = zones.find(z => z.name === t.zone);
                             return isUnlock ? (
                                 <div key={t.id} className="p-4 sm:p-5 rounded-2xl bg-white border border-dashed border-emerald-300/80 shadow-sm text-sm text-stone-700">
                                     <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-700 mb-2 uppercase tracking-[0.18em]">
@@ -468,11 +467,6 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                                             <span className="truncate font-medium">{t.label}</span>
                                             <div className="flex items-center gap-2 mt-1">
                                                 <span className="text-[10px] font-bold text-stone-600 uppercase tracking-[0.2em] bg-[color:var(--surface-muted)] border border-[color:var(--border)] px-2 py-0.5 rounded-full">{t.zone}</span>
-                                                {taskZone?.level && (
-                                                    <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded uppercase tracking-[0.18em]">
-                                                        {taskZone.level}
-                                                    </span>
-                                                )}
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-3">
@@ -492,11 +486,6 @@ export const ExecutionView: React.FC<ExecutionViewProps> = ({
                                             <span className="text-[10px] font-bold text-stone-600 uppercase tracking-[0.2em] bg-[color:var(--surface-muted)] border border-[color:var(--border)] px-2 py-0.5 rounded-full">
                                                 {t.zone}
                                             </span>
-                                            {taskZone?.level && (
-                                                <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded uppercase tracking-[0.18em]">
-                                                    {taskZone.level}
-                                                </span>
-                                            )}
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3">
