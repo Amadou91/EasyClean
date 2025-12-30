@@ -602,15 +602,15 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                                           {isMobile ? (
                                               <div className="flex-1 bg-white border border-stone-200 rounded-lg px-3 py-1.5 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100 transition-all">
                                                   <select
-                                                      className="w-full bg-transparent text-stone-900 text-sm font-bold outline-none cursor-pointer"
-                                                      value={newItem.recurrence}
-                                                      onChange={e => setNewItem({...newItem, recurrence: parseInt(e.target.value) || 1})}
-                                                  >
-                                                      {Array.from({ length: 60 }, (_, i) => i + 1).map(day => (
-                                                          <option key={day} value={day}>{day} day{day > 1 ? 's' : ''}</option>
-                                                      ))}
-                                                  </select>
-                                              </div>
+                                                  className="w-full bg-transparent text-stone-900 text-sm font-bold outline-none cursor-pointer"
+                                                  value={newItem.recurrence}
+                                                  onChange={e => setNewItem({...newItem, recurrence: parseInt(e.target.value) || 1})}
+                                              >
+                                                  {Array.from({ length: 150 }, (_, i) => i + 1).map(day => (
+                                                      <option key={day} value={day}>{day} day{day > 1 ? 's' : ''}</option>
+                                                  ))}
+                                              </select>
+                                          </div>
                                           ) : (
                                               <input 
                                                   type="number" 
